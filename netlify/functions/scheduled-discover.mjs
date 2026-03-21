@@ -97,18 +97,89 @@ async function fetchSamGov() {
   } catch { return []; }
 }
 
+async function fetchExternalScraper() {
+  const scraperUrl = process.env.EXTERNAL_SCRAPER_URL || "https://api.vibemap.com/scrape";
+  const apiKey = process.env.SCRAPE_API_KEY;
+  if (!apiKey) return [];
+
+  const targetUrls = [
+    "https://caleprocure.ca.gov",
+    "https://procurement.opengov.com",
+    "https://pbsystem.planetbids.com",
+    "https://www.bart.gov/about/business/procurement",
+    "https://mtc.ca.gov/about-mtc/careers-and-contracting",
+    "https://sf.gov/information/bid-opportunities",
+    "https://www.sanjoseca.gov/doing-business/bids-purchasing",
+    "https://www.oaklandca.gov/topics/city-of-oakland-bids",
+    "https://www.marincounty.gov/contracting-opportunities",
+    "https://www.smcgov.org/ceo/request-proposals-rfp",
+    "https://www.ocwd.com/about/rfp-contracts/",
+    "https://www.mwdoc.com/about-mwdoc/rfps-rfqs/",
+    "https://www.hacla.org/procurement",
+    "https://hbex.coveredca.com/solicitations/",
+    "https://sgc.ca.gov",
+    "https://www.csuchico.edu/pcs/current-bids.shtml"
+  ];
+
+  try {
+    const res = await fetch(scraperUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": apiKey
+      },
+      body: JSON.stringify({
+        urls: targetUrls,
+        profile: "procurement"
+      })
+    });
+    
+    if (!res.ok) {
+      console.error("External scraper returned:", res.status);
+      return [];
+    }
+    
+    const json = await res.json();
+    const finalRecords = [];
+    for (const r of (json.results || [])) {
+      if (r.success && Array.isArray(r.data)) {
+        for (const item of r.data) {
+          finalRecords.push({
+            id: `scrape-${(item.title || "").replace(/[^a-z0-9]/gi, "").slice(0, 20)}-${Date.now()}`,
+            title: item.title || "Untitled",
+            agency: item.agency || "Unknown Agency",
+            url: item.url || r.url,
+            deadline: item.deadline || null,
+            description: (item.description || "").slice(0, 300),
+            postedDate: null,
+            budget: item.budget_range || null,
+            source: "External Scraper / " + new URL(r.url).hostname
+          });
+        }
+      } else if (!r.success) {
+        console.warn(`Scrape failed for ${r.url}:`, r.error);
+      }
+    }
+    return finalRecords;
+  } catch (err) {
+    console.error("External scraper error:", err);
+    return [];
+  }
+}
+
 export default async () => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
 
   try {
     // Fetch from all direct APIs in parallel
-    const [grantsGov, caGrants, samGov] = await Promise.all([
+    const [grantsGov, caGrants, samGov, externalScraped] = await Promise.all([
       fetchGrantsGov(),
       fetchCaGrants(),
       fetchSamGov(),
+      fetchExternalScraper()
     ]);
 
-    const allResults = [...grantsGov, ...caGrants, ...samGov];
+    const allResults = [...grantsGov, ...caGrants, ...samGov, ...externalScraped];
     console.log(`Scheduled: fetched ${allResults.length} raw opportunities from APIs`);
 
     // Score with LLM if available (fast, no web_search)
