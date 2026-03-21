@@ -1,8 +1,28 @@
 {
   "permissions": {
     "allow": [
-      "Bash(git fetch:*)",
-      "Bash(git merge:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "WebSearch",
+      "Bash(npm install:*)",
+      "Bash(npm run:*)",
+      "Bash(npx netlify:*)",
+      "WebFetch(domain:open.gsa.gov)",
+      "WebFetch(domain:data.ca.gov)",
+      "mcp__Claude_Preview__preview_start",
+      "Read(//c/nvm4w/nodejs/**)",
+      "Bash(where netlify:*)",
+      "Bash(npm root:*)",
+      "Bash(ls /c/nvm4w/nodejs/netlify*)",
+      "Bash(ls /c/nvm4w/nodejs/node_modules/.bin/netlify*)",
+      "Bash(npm ls:*)",
+      "Bash(ls \"C:/Users/steph/Development/rfp-radar/rfp-radar-netlify/node_modules/.bin/netlify\"*)",
+      "Bash(gh pr:*)",
+      "Bash(gh api:*)",
+      "Bash(git checkout:*)",
+      "Bash(git status:*)",
+      "Bash(wc -l src/components/*.jsx src/constants.js src/utils.js src/App.jsx)"
     ]
   }
 }

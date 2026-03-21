@@ -1,371 +1,13 @@
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { STATUSES, STATUS_STYLE, SERVICES, STORAGE_KEYS } from './constants';
+import { cacheAge, isCacheFresh, loadLocal, saveLocal, isUrgent, fmtDate } from './utils';
 
-// ─── Constants ─────────────────────────────────────────────────────────────────
-
-const STATUSES = ["New", "Reviewing", "Interested", "Bidding", "Submitted", "Won", "Passed", "Lost"];
-
-const STATUS_STYLE = {
-  New:        { bg: "#F1F5F9", fg: "#475569", dot: "#94A3B8" },
-  Reviewing:  { bg: "#EFF6FF", fg: "#1D4ED8", dot: "#3B82F6" },
-  Interested: { bg: "#FEF3C7", fg: "#92400E", dot: "#F59E0B" },
-  Bidding:    { bg: "#ECFDF5", fg: "#065F46", dot: "#10B981" },
-  Submitted:  { bg: "#F0F9FF", fg: "#075985", dot: "#0EA5E9" },
-  Won:        { bg: "#F0FDF4", fg: "#14532D", dot: "#22C55E" },
-  Passed:     { bg: "#F3F4F6", fg: "#6B7280", dot: "#9CA3AF" },
-  Lost:       { bg: "#FEF2F2", fg: "#991B1B", dot: "#EF4444" },
-};
-
-const scoreStyle = (s) => {
-  if (s >= 8) return { bg: "#DCFCE7", fg: "#166534", border: "#86EFAC" };
-  if (s >= 6) return { bg: "#FEF3C7", fg: "#92400E", border: "#FCD34D" };
-  if (s >= 4) return { bg: "#DBEAFE", fg: "#1E40AF", border: "#93C5FD" };
-  return { bg: "#F3F4F6", fg: "#6B7280", border: "#D1D5DB" };
-};
-
-const SERVICES = [
-  "All service areas",
-  "Service Design & Evaluation",
-  "Strategic Planning",
-  "Community & Stakeholder Engagement",
-  "Training & Capacity Building",
-];
-
-const SOURCES = [
-  // ── Direct API sources ──
-  { name: "grants.gov",                    url: "https://www.grants.gov",                               tier: "Primary",      type: "Federal" },
-  { name: "California Grants Portal",      url: "https://www.grants.ca.gov",                            tier: "Primary",      type: "State" },
-  { name: "SAM.gov",                       url: "https://sam.gov",                                      tier: "Primary",      type: "Federal" },
-  // ── State portals ──
-  { name: "Cal eProcure / CSCR",          url: "https://caleprocure.ca.gov",                            tier: "Primary",      type: "State" },
-  { name: "OpenGov Procurement",           url: "https://procurement.opengov.com",                      tier: "Primary",      type: "Local Gov" },
-  { name: "PlanetBids",                    url: "https://pbsystem.planetbids.com",                      tier: "Primary",      type: "Local Gov" },
-  // ── Transit & regional ──
-  { name: "BART Procurement",             url: "https://www.bart.gov/about/business/procurement",       tier: "Watch",        type: "Transit" },
-  { name: "ABAG / MTC",                    url: "https://mtc.ca.gov/about-mtc/careers-and-contracting", tier: "Watch",        type: "Regional" },
-  // ── City portals ──
-  { name: "SF OEWD Bid Opportunities",    url: "https://sf.gov/information/bid-opportunities",          tier: "Watch",        type: "City" },
-  { name: "City of San Jose",              url: "https://www.sanjoseca.gov/doing-business/bids-purchasing", tier: "Watch",   type: "City" },
-  { name: "City of Oakland",               url: "https://www.oaklandca.gov/topics/city-of-oakland-bids",tier: "Watch",        type: "City" },
-  // ── County portals ──
-  { name: "Marin County Contracting",      url: "https://www.marincounty.gov/contracting-opportunities",tier: "Watch",        type: "County" },
-  { name: "San Mateo County",              url: "https://www.smcgov.org/ceo/request-proposals-rfp",     tier: "Watch",        type: "County" },
-  { name: "Orange County Water District",  url: "https://www.ocwd.com/about/rfp-contracts/",            tier: "Watch",        type: "Special District" },
-  { name: "MWDOC",                         url: "https://www.mwdoc.com/about-mwdoc/rfps-rfqs/",         tier: "Watch",        type: "Special District" },
-  // ── Housing authorities ──
-  { name: "HACLA Open Solicitations",      url: "https://www.hacla.org/procurement",                    tier: "Watch",        type: "Housing Authority" },
-  // ── State agencies ──
-  { name: "Covered California",            url: "https://hbex.coveredca.com/solicitations/",            tier: "Watch",        type: "State Agency" },
-  { name: "Strategic Growth Council",      url: "https://sgc.ca.gov",                                   tier: "Watch",        type: "State Agency" },
-  // ── Higher Ed ──
-  { name: "Chico State Procurement",      url: "https://www.csuchico.edu/pcs/current-bids.shtml",      tier: "Watch",        type: "Higher Ed" },
-  // ── Foundations ──
-  { name: "California Community Foundation",url: "https://www.calfund.org/grants/",                    tier: "Supplement",   type: "Foundation" },
-  { name: "The California Endowment",      url: "https://www.calendow.org",                             tier: "Supplement",   type: "Foundation" },
-  { name: "San Francisco Foundation",      url: "https://sff.org",                                      tier: "Supplement",   type: "Foundation" },
-  // ── Aggregators & networks ──
-  { name: "BidNet Direct CA",              url: "https://www.bidnetdirect.com/california",              tier: "Supplement",   type: "Aggregator" },
-  { name: "HigherGov",                     url: "https://www.highergov.com",                            tier: "Supplement",   type: "Aggregator" },
-  { name: "CA Workforce Association",      url: "https://www.calworkforce.org",                         tier: "Relationship", type: "Network" },
-  { name: "ILG",                           url: "https://www.ca-ilg.org",                               tier: "Relationship", type: "Network" },
-];
-
-const TIER_STYLE = {
-  Primary:      { bg: "#d4eae6", fg: "#103b51" },
-  Watch:        { bg: "#fde8ea", fg: "#c11948" },
-  Supplement:   { bg: "#FEF3C7", fg: "#92400E" },
-  Relationship: { bg: "#e8e4f0", fg: "#386a7c" },
-};
-
-const STORAGE_KEYS = {
-  results:  "cm_rfp_results_v2",
-  pipeline: "cm_rfp_pipeline_v2",
-  lastRun:  "cm_rfp_lastrun_v2",
-};
-
-const CACHE_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
-
-function cacheAge(lastRun) {
-  if (!lastRun) return null;
-  const ms = Date.now() - new Date(lastRun).getTime();
-  if (!Number.isFinite(ms) || ms < 0) return null;
-  const mins = Math.floor(ms / 60000);
-  if (mins < 1) return "just now";
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  return `${Math.floor(hrs / 24)}d ago`;
-}
-
-function isCacheFresh(lastRun) {
-  if (!lastRun) return false;
-  return Date.now() - new Date(lastRun).getTime() < CACHE_TTL_MS;
-}
-
-// ─── Helpers ───────────────────────────────────────────────────────────────────
-
-function isUrgent(deadline) {
-  if (!deadline) return false;
-  const d = new Date(deadline);
-  if (isNaN(d)) return false;
-  const diff = (d - Date.now()) / (1000 * 60 * 60 * 24);
-  return diff >= 0 && diff <= 14;
-}
-
-function isPast(deadline) {
-  if (!deadline) return false;
-  const d = new Date(deadline);
-  return !isNaN(d) && d < new Date();
-}
-
-function fmtDate(iso) {
-  if (!iso) return "";
-  const d = new Date(iso);
-  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) +
-    " at " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-}
-
-function loadLocal(key) {
-  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : null; } catch { return null; }
-}
-
-function saveLocal(key, value) {
-  try { localStorage.setItem(key, JSON.stringify(value)); } catch {}
-}
-
-// ─── Small components ──────────────────────────────────────────────────────────
-
-function Chip({ label, bg = "#F1F5F9", fg = "#475569", dot }) {
-  return (
-    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 500, padding: "2px 8px", background: bg, color: fg, borderRadius: 20, whiteSpace: "nowrap" }}>
-      {dot && <span style={{ width: 6, height: 6, borderRadius: "50%", background: dot, flexShrink: 0 }} />}
-      {label}
-    </span>
-  );
-}
-
-function Score({ score }) {
-  const c = scoreStyle(score);
-  return (
-    <div style={{ width: 36, height: 36, borderRadius: "50%", flexShrink: 0, background: c.bg, color: c.fg, border: `1.5px solid ${c.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700 }}>
-      {score}
-    </div>
-  );
-}
-
-function StatCard({ label, value, accent = "#103b51" }) {
-  return (
-    <div style={{ background: "#FFF", border: "1px solid #E2E8F0", borderRadius: 10, padding: "10px 14px", flex: 1, minWidth: 56 }}>
-      <div style={{ fontSize: 22, fontWeight: 700, color: accent, lineHeight: 1 }}>{value}</div>
-      <div style={{ fontSize: 11, color: "#94A3B8", marginTop: 3 }}>{label}</div>
-    </div>
-  );
-}
-
-// ─── Discover card ─────────────────────────────────────────────────────────────
-
-function DiscoverCard({ rfp, expanded, onToggle, inPipeline, onAdd }) {
-  const sc = scoreStyle(rfp.relevanceScore || 5);
-  const urgent = isUrgent(rfp.deadline);
-  const past   = isPast(rfp.deadline);
-
-  return (
-    <div style={{ background: "#FFF", border: "1px solid #E2E8F0", borderRadius: 12, marginBottom: 8, overflow: "hidden", boxShadow: expanded ? "0 4px 14px rgba(0,0,0,.07)" : "none", transition: "box-shadow .2s" }}>
-      <div onClick={onToggle} style={{ padding: "13px 15px", display: "flex", gap: 11, alignItems: "flex-start", cursor: "pointer", background: expanded ? "#FAFBFD" : "#FFF" }}>
-        <Score score={rfp.relevanceScore || 5} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: "#103b51", lineHeight: 1.35, marginBottom: 3 }}>{rfp.title}</div>
-          <div style={{ fontSize: 12, color: "#64748B", marginBottom: 6 }}>{rfp.agency}</div>
-          <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-            {rfp.source && <Chip label={rfp.source} bg="#e3e1da" fg="#386a7c" />}
-            {rfp.serviceArea && <Chip label={rfp.serviceArea} />}
-            {rfp.deadline && <Chip label={`Due: ${rfp.deadline}`} bg={past ? "#FEE2E2" : urgent ? "#FEF3C7" : "#F1F5F9"} fg={past ? "#991B1B" : urgent ? "#92400E" : "#475569"} />}
-            {rfp.budget && <Chip label={rfp.budget} bg="#EDE9FE" fg="#5B21B6" />}
-            {rfp.isManual && <Chip label="Manual" bg="#F3F4F6" fg="#6B7280" />}
-          </div>
-        </div>
-        <span style={{ color: "#94A3B8", fontSize: 18, lineHeight: 1, flexShrink: 0, marginTop: 2 }}>{expanded ? "−" : "+"}</span>
-      </div>
-
-      {expanded && (
-        <div style={{ borderTop: "1px solid #F1F5F9", padding: "13px 15px" }}>
-          <p style={{ fontSize: 13, color: "#475569", lineHeight: 1.7, margin: "0 0 11px" }}>{rfp.description}</p>
-          {rfp.relevanceReason && (
-            <div style={{ background: sc.bg, border: `1px solid ${sc.border}`, borderRadius: 8, padding: "9px 12px", marginBottom: 11 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: sc.fg, marginBottom: 3 }}>Why it matches CivicMakers</div>
-              <div style={{ fontSize: 13, color: "#103b51", lineHeight: 1.55 }}>{rfp.relevanceReason}</div>
-            </div>
-          )}
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-            <div style={{ fontSize: 11, color: "#94A3B8" }}>
-              {rfp.source && `via ${rfp.source}`}{rfp.postedDate && ` · Posted ${rfp.postedDate}`}
-            </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              {rfp.url && rfp.url !== "null" && (
-                <a href={rfp.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: 12, color: "#ef525f", textDecoration: "underline" }}>View RFP →</a>
-              )}
-              {!inPipeline
-                ? <button onClick={e => { e.stopPropagation(); onAdd(); }} style={{ fontSize: 12, fontWeight: 700, padding: "6px 14px", background: "#103b51", color: "#FFF", border: "none", borderRadius: 8, cursor: "pointer" }}>+ Add to Pipeline</button>
-                : <Chip label="✓ In pipeline" bg="#ECFDF5" fg="#065F46" />
-              }
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Pipeline card ─────────────────────────────────────────────────────────────
-
-function PipelineCard({ rfp, expanded, onToggle, onStatusChange, onNotesChange, onRemove }) {
-  const sm     = STATUS_STYLE[rfp.status] || STATUS_STYLE.New;
-  const urgent = isUrgent(rfp.deadline);
-  const past   = isPast(rfp.deadline);
-
-  return (
-    <div style={{ background: "#FFF", border: `1px solid ${urgent ? "#FCD34D" : past ? "#FCA5A5" : "#E2E8F0"}`, borderRadius: 12, marginBottom: 8, overflow: "hidden" }}>
-      <div onClick={onToggle} style={{ padding: "13px 15px", display: "flex", gap: 11, alignItems: "flex-start", cursor: "pointer" }}>
-        <Score score={rfp.relevanceScore || 5} />
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: "#103b51", lineHeight: 1.35, marginBottom: 3 }}>{rfp.title}</div>
-          <div style={{ fontSize: 12, color: "#64748B", marginBottom: 6 }}>{rfp.agency}</div>
-          <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-            <Chip label={rfp.status} bg={sm.bg} fg={sm.fg} dot={sm.dot} />
-            {rfp.serviceArea && <Chip label={rfp.serviceArea} />}
-            {rfp.deadline && <Chip label={`Due: ${rfp.deadline}`} bg={past ? "#FEE2E2" : urgent ? "#FEF3C7" : "#F1F5F9"} fg={past ? "#991B1B" : urgent ? "#92400E" : "#475569"} />}
-          </div>
-        </div>
-        <span style={{ color: "#94A3B8", fontSize: 18, lineHeight: 1, flexShrink: 0, marginTop: 2 }}>{expanded ? "−" : "+"}</span>
-      </div>
-
-      {expanded && (
-        <div style={{ borderTop: "1px solid #F1F5F9", padding: "13px 15px" }}>
-          <p style={{ fontSize: 13, color: "#475569", lineHeight: 1.7, margin: "0 0 13px" }}>{rfp.description}</p>
-
-          <div style={{ marginBottom: 13 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: "#94A3B8", marginBottom: 7 }}>Stage</div>
-            <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-              {STATUSES.map(st => {
-                const c = STATUS_STYLE[st];
-                const active = rfp.status === st;
-                return (
-                  <button key={st} onClick={e => { e.stopPropagation(); onStatusChange(st); }} style={{ fontSize: 11, fontWeight: active ? 700 : 400, padding: "4px 10px", background: active ? c.bg : "transparent", color: active ? c.fg : "#94A3B8", border: active ? `1px solid ${c.dot}` : "1px solid #E2E8F0", borderRadius: 20, cursor: "pointer" }}>
-                    {st}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          <div style={{ marginBottom: 11 }}>
-            <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: "#94A3B8", marginBottom: 7 }}>Notes</div>
-            <textarea
-              value={rfp.notes || ""}
-              onChange={e => onNotesChange(e.target.value)}
-              onClick={e => e.stopPropagation()}
-              placeholder="Contacts, strategy, teaming partners, deadline reminders…"
-              style={{ width: "100%", minHeight: 72, fontSize: 13, padding: "8px 10px", boxSizing: "border-box", border: "1px solid #E2E8F0", borderRadius: 8, background: "#FAFBFD", color: "#103b51", resize: "vertical", lineHeight: 1.55 }}
-            />
-          </div>
-
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            {rfp.url && rfp.url !== "null"
-              ? <a href={rfp.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: 12, color: "#ef525f", textDecoration: "underline" }}>View original RFP →</a>
-              : <span />
-            }
-            <button onClick={e => { e.stopPropagation(); onRemove(); }} style={{ fontSize: 12, color: "#94A3B8", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Remove</button>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Manual entry modal ────────────────────────────────────────────────────────
-
-function ManualEntryModal({ onSave, onClose }) {
-  const [form, setForm] = useState({ title: "", agency: "", url: "", deadline: "", budget: "", serviceArea: SERVICES[1], description: "", notes: "" });
-  const [err, setErr] = useState("");
-  const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-  const inp = { width: "100%", fontSize: 13, padding: "8px 10px", border: "1px solid #E2E8F0", borderRadius: 8, background: "#FFF", color: "#103b51" };
-  const lbl = { fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: "#64748B", display: "block", marginBottom: 5 };
-
-  const handleSave = () => {
-    if (!form.title.trim()) { setErr("Title is required."); return; }
-    if (!form.agency.trim()) { setErr("Agency is required."); return; }
-    onSave({ id: `manual-${Date.now()}`, ...form, relevanceScore: 5, relevanceReason: "Manually entered opportunity.", source: "Manual entry", isManual: true, discoveredAt: new Date().toISOString(), status: "New" });
-  };
-
-  return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
-      <div style={{ background: "#FFF", borderRadius: 14, padding: "22px", width: "min(520px, 96vw)", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,.2)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-          <span style={{ fontSize: 16, fontWeight: 700, color: "#103b51" }}>Add opportunity manually</span>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, color: "#94A3B8", cursor: "pointer" }}>×</button>
-        </div>
-        {[["Title *","title","Full RFP/RFQ title"],["Agency *","agency","Issuing organization"],["URL","url","https://…"],["Deadline","deadline","e.g. April 15, 2026"],["Budget","budget","e.g. $50,000"]].map(([label, key, ph]) => (
-          <div key={key} style={{ marginBottom: 12 }}>
-            <label style={lbl}>{label}</label>
-            <input value={form[key]} onChange={e => set(key, e.target.value)} placeholder={ph} style={inp} />
-          </div>
-        ))}
-        <div style={{ marginBottom: 12 }}>
-          <label style={lbl}>Service Area</label>
-          <select value={form.serviceArea} onChange={e => set("serviceArea", e.target.value)} style={inp}>
-            {SERVICES.slice(1).map(s => <option key={s}>{s}</option>)}
-          </select>
-        </div>
-        <div style={{ marginBottom: 12 }}>
-          <label style={lbl}>Description</label>
-          <textarea value={form.description} onChange={e => set("description", e.target.value)} placeholder="Brief scope of work…" rows={3} style={{ ...inp, resize: "vertical", lineHeight: 1.55 }} />
-        </div>
-        <div style={{ marginBottom: 16 }}>
-          <label style={lbl}>Notes</label>
-          <textarea value={form.notes} onChange={e => set("notes", e.target.value)} placeholder="Contacts, strategy…" rows={2} style={{ ...inp, resize: "vertical", lineHeight: 1.55 }} />
-        </div>
-        {err && <div style={{ fontSize: 12, color: "#991B1B", marginBottom: 10 }}>{err}</div>}
-        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
-          <button onClick={onClose} style={{ fontSize: 13, padding: "8px 16px", background: "none", border: "1px solid #E2E8F0", borderRadius: 8, cursor: "pointer", color: "#64748B" }}>Cancel</button>
-          <button onClick={handleSave} style={{ fontSize: 13, fontWeight: 700, padding: "8px 18px", background: "#103b51", color: "#FFF", border: "none", borderRadius: 8, cursor: "pointer" }}>Add to Pipeline</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Sources tab ───────────────────────────────────────────────────────────────
-
-function SourcesTab() {
-  return (
-    <div>
-      <p style={{ fontSize: 12, color: "#94A3B8", margin: "0 0 12px" }}>{SOURCES.length} monitored sources</p>
-      {SOURCES.map(s => {
-        const t = TIER_STYLE[s.tier] || { bg: "#F3F4F6", fg: "#475569" };
-        return (
-          <div key={s.name} style={{ display: "flex", gap: 10, padding: "10px 0", borderBottom: "1px solid #F1F5F9", alignItems: "flex-start" }}>
-            <Chip label={s.tier} bg={t.bg} fg={t.fg} />
-            <div style={{ flex: 1 }}>
-              <div style={{ display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap" }}>
-                <a href={s.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, fontWeight: 600, color: "#103b51", textDecoration: "none" }}>{s.name}</a>
-                <span style={{ fontSize: 11, color: "#94A3B8" }}>{s.type}</span>
-              </div>
-            </div>
-          </div>
-        );
-      })}
-      <div style={{ marginTop: 18, padding: "13px 14px", background: "#F8FAFF", border: "1px solid #DBEAFE", borderRadius: 10 }}>
-        <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: "#1E40AF", marginBottom: 8 }}>Cal eProcure UNSPSC codes</div>
-        {[["80101500","Management consulting"],["80101501","Organizational development"],["80111600","Public relations"],["80161600","Training programs"],["93141702","Community programs"],["80141602","Facilitation services"]].map(([code, label]) => (
-          <div key={code} style={{ fontSize: 12, color: "#103b51", padding: "2px 0" }}>
-            <span style={{ fontFamily: "monospace", color: "#ef525f", marginRight: 8 }}>{code}</span>{label}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─── Main App ──────────────────────────────────────────────────────────────────
+import { Chip } from './components/Chip';
+import { StatCard } from './components/StatCard';
+import { DiscoverCard } from './components/DiscoverCard';
+import { PipelineCard } from './components/PipelineCard';
+import { ManualEntryModal } from './components/ManualEntryModal';
+import { SourcesTab } from './components/SourcesTab';
 
 export default function App() {
   const [tab,           setTab]           = useState("discover");
@@ -380,8 +22,6 @@ export default function App() {
   const [showManual,    setShowManual]    = useState(false);
   const discoverRef = useRef(null);
 
-  // Load from localStorage on mount, then prefetch from server cache,
-  // then auto-discover if no data is available.
   useEffect(() => {
     const r = loadLocal(STORAGE_KEYS.results);  if (r) setResults(r);
     const p = loadLocal(STORAGE_KEYS.pipeline); if (p) setPipeline(p);
@@ -390,10 +30,8 @@ export default function App() {
     const hasLocalResults = r && r.length > 0;
     const localCacheFresh = hasLocalResults && isCacheFresh(l);
 
-    // If local cache is fresh, no need to fetch anything else
     if (localCacheFresh) return;
 
-    // Prefetch: load server-cached results (instant, no API cost)
     fetch("/.netlify/functions/cached")
       .then(res => {
         if (res.status === 204 || !res.ok) return null;
@@ -401,12 +39,10 @@ export default function App() {
       })
       .then(data => {
         if (!data || !data.results) {
-          // No server cache either — auto-trigger live discovery
           if (!hasLocalResults) discoverRef.current();
           return;
         }
 
-        // Parse cached results — handles both JSON string and raw array
         let rfps;
         try {
           if (typeof data.results === "string") {
@@ -431,17 +67,16 @@ export default function App() {
           isManual: false,
         }));
 
-        // Merge with any existing localStorage results (dedup by URL)
         setResults(prev => {
           const existingUrls = new Set(prev.map(r => r.url).filter(Boolean));
           const fresh = enriched.filter(r => !r.url || !existingUrls.has(r.url));
           if (fresh.length === 0) return prev;
-          const merged = [...fresh, ...prev];
+          // Keep max latest 200 items to prevent localStorage limits being hit
+          const merged = [...fresh, ...prev].slice(0, 200);
           saveLocal(STORAGE_KEYS.results, merged);
           return merged;
         });
 
-        // Update lastRun if server cache is newer
         setLastRun(prev => {
           if (!prev || new Date(data.cachedAt) > new Date(prev)) {
             saveLocal(STORAGE_KEYS.lastRun, data.cachedAt);
@@ -451,12 +86,9 @@ export default function App() {
         });
       })
       .catch(() => {
-        // Prefetch failed — auto-discover if no local data
         if (!hasLocalResults) discoverRef.current();
       });
   }, []);
-
-  // ── Helpers for parsing LLM JSON responses ────────────────────────────────
 
   function parseRfpJson(text) {
     const strict = text.match(/\[\s*\{[\s\S]*\}\s*\]/);
@@ -473,15 +105,13 @@ export default function App() {
     const fresh = newItems.filter(r =>
       (!r.url || !existingUrls.has(r.url)) && !existingIds.has(r.id)
     );
-    return fresh.length > 0 ? [...fresh, ...prev] : prev;
+    // Keep max latest 200 items to prevent localStorage quotas
+    return fresh.length > 0 ? [...fresh, ...prev].slice(0, 200) : prev;
   }
 
-  // ── Discovery (hybrid pipeline) ──────────────────────────────────────────
-
   async function discover(forceRefresh = false) {
-    // Serve cached results if fresh and not forcing
     if (!forceRefresh && isCacheFresh(lastRun) && results.length > 0) {
-      return; // already have fresh data
+      return;
     }
 
     setDiscovering(true);
@@ -490,7 +120,6 @@ export default function App() {
 
     const now = new Date().toISOString();
 
-    // ── Phase 1: Fire direct API fetches in parallel (fast, free) ──
     const apiEndpoints = [
       "/.netlify/functions/fetch-grants-gov",
       "/.netlify/functions/fetch-ca-grants",
@@ -501,12 +130,10 @@ export default function App() {
       fetch(url).then(r => r.ok ? r.json() : { results: [] }).catch(() => ({ results: [] }))
     );
 
-    // ── Phase 2: Fire LLM gap-fill search in parallel (slower) ──
     const focus = serviceFilter === "All service areas"
       ? "all four service areas"
       : `"${serviceFilter}" specifically`;
 
-    // Reduced prompt — skip sources covered by direct APIs
     const gapFillPrompt = `Today is ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}. You are an RFP research assistant for CivicMakers, a California public sector design consultancy.
 
 CivicMakers' four service areas:
@@ -536,7 +163,7 @@ Search for current California RFPs, RFQs, IFBs, and consulting solicitations on 
 
 Use keywords: "community engagement consultant RFP", "strategic planning consultant RFP", "human-centered design consulting RFP", "equity assessment consultant RFP", "workforce development RFP California".
 
-Return 6–8 best matches as a JSON array. Each object must have exactly:
+Return 20-30 best matches as a JSON array. Each object must have exactly:
 {
   "id": "unique-slug",
   "title": "full title as listed",
@@ -561,12 +188,10 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
     });
 
     try {
-      // Wait for API results first (fast, ~2-3s)
       const apiResults = await Promise.all(apiPromises);
       const rawApiOpps = apiResults.flatMap(r => r.results || []);
 
       if (rawApiOpps.length > 0) {
-        // Show unscored API results immediately (with placeholder scores)
         const quickResults = rawApiOpps.map((r, i) => ({
           ...r,
           id: r.id || `api-${Date.now()}-${i}`,
@@ -583,7 +208,6 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
           return merged;
         });
 
-        // ── Phase 3: Score API results with LLM (no web_search, ~5s) ──
         fetch("/.netlify/functions/score", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -599,9 +223,8 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
               isManual: false,
             }));
             setResults(prev => {
-              // Replace unscored versions with scored ones
               const withoutOld = prev.filter(p => !scored.some(s => s.id === p.id));
-              const merged = [...scored, ...withoutOld];
+              const merged = [...scored, ...withoutOld].slice(0, 200);
               saveLocal(STORAGE_KEYS.results, merged);
               return merged;
             });
@@ -609,7 +232,6 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
           .catch(err => console.error("Scoring error:", err));
       }
 
-      // LLM gap-fill: best-effort, non-blocking — don't fail if Anthropic credits are low
       gapFillPromise
         .then(async (gapFillRes) => {
           if (!gapFillRes.ok) return;
@@ -662,10 +284,7 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
     setDiscovering(false);
   }
 
-  // Keep ref in sync so the mount effect can call discover without deps
   discoverRef.current = () => discover(true);
-
-  // ── Pipeline ops ───────────────────────────────────────────────────────────
 
   function persistPipeline(updated) {
     setPipeline(updated);
@@ -696,8 +315,6 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
     a.click();
   }
 
-  // ── Derived ────────────────────────────────────────────────────────────────
-
   const filtered = [...results]
     .filter(r => (r.relevanceScore || 0) >= minScore)
     .filter(r => serviceFilter === "All service areas" || r.serviceArea === serviceFilter)
@@ -707,8 +324,6 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
   const activeCount  = pipeline.filter(p => activeStatuses.includes(p.status)).length;
   const wonCount     = pipeline.filter(p => p.status === "Won").length;
   const urgentCount  = pipeline.filter(p => isUrgent(p.deadline)).length;
-
-  // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
     <div style={{ background: "#f4f3f0", minHeight: "100vh" }}>
