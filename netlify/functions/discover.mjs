@@ -4,6 +4,9 @@
 // long-running web_search calls (30-40s).
 // ANTHROPIC_API_KEY is set in Netlify dashboard → Site configuration →
 // Environment variables. It never touches the browser.
+// Results are also cached to Netlify Blobs for prefetch.
+
+import { getStore } from "@netlify/blobs";
 
 export default async (req, context) => {
   if (req.method !== "POST") {
@@ -68,6 +71,14 @@ export default async (req, context) => {
       .filter(b => b.type === "text")
       .map(b => b.text)
       .join("\n");
+
+    // Cache results to Netlify Blobs for prefetch
+    try {
+      const store = getStore("rfp-cache");
+      await store.setJSON("results", { results: text, cachedAt: new Date().toISOString() });
+    } catch (blobErr) {
+      console.error("Blob write error (non-fatal):", blobErr);
+    }
 
     return new Response(JSON.stringify({ text }), {
       status: 200,
