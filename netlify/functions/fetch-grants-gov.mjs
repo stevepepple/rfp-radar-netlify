@@ -29,7 +29,7 @@ export default async (req) => {
       const searchBody = {
         keyword: keyword,
         oppStatuses: "posted",
-        rows: 100,
+        rows: 10,
         sortBy: "openDate|desc",
       };
 
@@ -88,7 +88,7 @@ export default async (req) => {
       return true;
     });
 
-    return new Response(JSON.stringify({ results: unique.slice(0, 100) }), {
+    return new Response(JSON.stringify({ results: unique.slice(0, 15) }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });

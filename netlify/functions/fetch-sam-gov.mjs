@@ -31,7 +31,7 @@ export default async (req) => {
       postedTo: fmt(now),
       ptype: "p,r,s,o,k",  // presolicitation, sources sought, special notice, solicitation, combined
       state: "CA",
-      limit: "100",
+      limit: "25",
       offset: "0",
     });
 
@@ -78,7 +78,7 @@ export default async (req) => {
         serviceArea: null,
       }));
 
-    return new Response(JSON.stringify({ results: results.slice(0, 100) }), {
+    return new Response(JSON.stringify({ results: results.slice(0, 15) }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });
