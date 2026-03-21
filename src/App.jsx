@@ -66,6 +66,25 @@ const STORAGE_KEYS = {
   lastRun:  "cm_rfp_lastrun_v2",
 };
 
+const CACHE_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
+
+function cacheAge(lastRun) {
+  if (!lastRun) return null;
+  const ms = Date.now() - new Date(lastRun).getTime();
+  if (ms < 0) return null;
+  const mins = Math.floor(ms / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  return `${Math.floor(hrs / 24)}d ago`;
+}
+
+function isCacheFresh(lastRun) {
+  if (!lastRun) return false;
+  return Date.now() - new Date(lastRun).getTime() < CACHE_TTL_MS;
+}
+
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
 function isUrgent(deadline) {
@@ -352,7 +371,12 @@ export default function App() {
 
   // ── Discovery ──────────────────────────────────────────────────────────────
 
-  async function discover() {
+  async function discover(forceRefresh = false) {
+    // Serve cached results if fresh and not forcing
+    if (!forceRefresh && isCacheFresh(lastRun) && results.length > 0) {
+      return; // already have fresh data
+    }
+
     setDiscovering(true);
     setError(null);
     setExpandedId(null);
@@ -544,9 +568,15 @@ FINAL output: ONLY the raw JSON array. No markdown fences, no explanation. Start
               <select value={minScore} onChange={e => setMinScore(Number(e.target.value))} style={{ flex: 1, minWidth: 110, padding: "8px 10px", border: "1px solid #E2E8F0", borderRadius: 8, background: "#FFF", fontSize: 13, color: "#1E293B" }}>
                 {[3,4,5,6,7,8].map(n => <option key={n} value={n}>Score {n}+</option>)}
               </select>
-              <button onClick={discover} disabled={discovering} style={{ padding: "8px 20px", fontSize: 13, fontWeight: 700, background: discovering ? "#64748B" : "#0F172A", color: "#F8FAFC", border: "none", borderRadius: 8, cursor: discovering ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}>
-                {discovering ? "Searching…" : "Run Discovery ↗"}
-              </button>
+              {isCacheFresh(lastRun) && results.length > 0 ? (
+                <button onClick={() => discover(true)} disabled={discovering} style={{ padding: "8px 20px", fontSize: 13, fontWeight: 700, background: discovering ? "#64748B" : "#FFF", color: discovering ? "#F8FAFC" : "#0F172A", border: "1px solid #E2E8F0", borderRadius: 8, cursor: discovering ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}>
+                  {discovering ? "Searching…" : `Refresh ↻ (cached ${cacheAge(lastRun)})`}
+                </button>
+              ) : (
+                <button onClick={() => discover(true)} disabled={discovering} style={{ padding: "8px 20px", fontSize: 13, fontWeight: 700, background: discovering ? "#64748B" : "#0F172A", color: "#F8FAFC", border: "none", borderRadius: 8, cursor: discovering ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}>
+                  {discovering ? "Searching…" : "Run Discovery ↗"}
+                </button>
+              )}
             </div>
 
             {discovering && (
@@ -565,7 +595,7 @@ FINAL output: ONLY the raw JSON array. No markdown fences, no explanation. Start
             {!discovering && filtered.length > 0 && (
               <>
                 <div style={{ fontSize: 12, color: "#94A3B8", marginBottom: 9, display: "flex", justifyContent: "space-between" }}>
-                  <span>{filtered.length} of {results.length} · sorted by score</span>
+                  <span>{filtered.length} of {results.length} · sorted by score{lastRun && ` · fetched ${cacheAge(lastRun)}`}{isCacheFresh(lastRun) && " ✓"}</span>
                   <button onClick={clearResults} style={{ fontSize: 11, color: "#94A3B8", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Clear</button>
                 </div>
                 {filtered.map(rfp => (
