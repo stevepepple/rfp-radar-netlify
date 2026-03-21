@@ -34,7 +34,7 @@ export default async (req) => {
       )
       AND "status" = 'Active'
       ORDER BY "openDate" DESC
-      LIMIT 20
+      LIMIT 100
     `.trim();
 
     const url = `${CKAN_API}?sql=${encodeURIComponent(sql)}`;
@@ -42,7 +42,7 @@ export default async (req) => {
 
     if (!res.ok) {
       // Fallback: try simpler datastore_search if SQL endpoint fails
-      const fallbackUrl = `https://data.ca.gov/api/3/action/datastore_search?resource_id=${RESOURCE_ID}&limit=30&sort=openDate desc`;
+      const fallbackUrl = `https://data.ca.gov/api/3/action/datastore_search?resource_id=${RESOURCE_ID}&limit=100&sort=openDate desc`;
       const fallbackRes = await fetch(fallbackUrl);
 
       if (!fallbackRes.ok) {
@@ -85,8 +85,8 @@ function normalizeRecords(records) {
       const keywords = ["engagement", "planning", "design", "equity", "training", "capacity", "evaluation", "stakeholder", "community", "facilitation"];
       return keywords.some(kw => text.includes(kw));
     })
-    .map(r => ({
-      id: `ca-grants-${r._id || r.grantTitle?.slice(0, 30).replace(/\s+/g, "-")}`,
+    .map((r, i) => ({
+      id: `ca-grants-${r._id || r.grantTitle?.slice(0, 30).replace(/\s+/g, "-") || `unknown-${i}`}`,
       title: r.grantTitle || "Untitled",
       agency: r.grantorName || r.agencyName || "California State Agency",
       url: r.applicationLink || r.grantLink || null,
@@ -105,7 +105,7 @@ function normalizeRecords(records) {
       relevanceReason: null,
       serviceArea: null,
     }))
-    .slice(0, 15);
+    .slice(0, 100);
 }
 
 export const config = {

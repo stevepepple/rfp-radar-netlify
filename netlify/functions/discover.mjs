@@ -139,7 +139,6 @@ export default async (req, context) => {
     status: 200,
     headers: {
       "Content-Type": "text/plain; charset=utf-8",
-      "Transfer-Encoding": "chunked",
     },
   });
 };

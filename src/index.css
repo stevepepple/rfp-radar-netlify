@@ -1,4 +1,4 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 body { background: #f4f3f0; font-family: "Public Sans", Helvetica, Arial, sans-serif; color: #103b51; }
 button, input, select, textarea { font-family: inherit; }
-a { color: #ef525f; }
+a { color: #c7323e; }
