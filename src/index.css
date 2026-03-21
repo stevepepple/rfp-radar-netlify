@@ -1,4 +1,39 @@
+:root {
+  /* ── Brand palette ── */
+  --color-navy: #103b51;
+  --color-coral: #ef525f;
+  --color-coral-dark: #c7323e;
+  --color-teal: #24a791;
+  --color-teal-bg: #d4eae6;
+  --color-cream: #f4f3f0;
+  --color-lavender: #e8e4f0;
+
+  /* ── Neutral scale ── */
+  --color-white: #FFFFFF;
+  --color-gray-100: #F1F5F9;
+  --color-gray-200: #E2E8F0;
+  --color-gray-300: #CBD5E1;
+  --color-gray-400: #94A3B8;
+  --color-gray-500: #64748B;
+  --color-gray-600: #475569;
+
+  /* ── Typography ── */
+  --font-sans: "Public Sans", Helvetica, Arial, sans-serif;
+  --font-display: "Montserrat", Helvetica, Arial, sans-serif;
+
+  /* ── Radii ── */
+  --radius-sm: 8px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-pill: 99px;
+
+  /* ── Semantic ── */
+  --color-success: #22C55E;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+}
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: #f4f3f0; font-family: "Public Sans", Helvetica, Arial, sans-serif; color: #103b51; }
+body { background: var(--color-cream); font-family: var(--font-sans); color: var(--color-navy); }
 button, input, select, textarea { font-family: inherit; }
-a { color: #c7323e; }
+a { color: var(--color-coral-dark); }

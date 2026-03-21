@@ -20,6 +20,7 @@ export default function App() {
   const [lastRun,       setLastRun]       = useState(null);
   const [expandedId,    setExpandedId]    = useState(null);
   const [showManual,    setShowManual]    = useState(false);
+  const [searchQuery,   setSearchQuery]   = useState("");
   const discoverRef = useRef(null);
 
   useEffect(() => {
@@ -315,9 +316,15 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
     a.click();
   }
 
+  const query = searchQuery.toLowerCase().trim();
   const filtered = [...results]
     .filter(r => (r.relevanceScore || 0) >= minScore)
     .filter(r => serviceFilter === "All service areas" || r.serviceArea === serviceFilter)
+    .filter(r => {
+      if (!query) return true;
+      const haystack = `${r.title || ""} ${r.agency || ""} ${r.description || ""}`.toLowerCase();
+      return haystack.includes(query);
+    })
     .sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
 
   const activeStatuses = ["New","Reviewing","Interested","Bidding","Submitted"];
@@ -363,6 +370,10 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
         {tab === "discover" && (
           <div>
             <div style={{ display: "flex", gap: 7, marginBottom: 10, flexWrap: "wrap" }}>
+              <div style={{ flex: 3, minWidth: 200, position: "relative" }}>
+                <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search title, agency, description…" style={{ width: "100%", padding: "8px 30px 8px 10px", border: "1px solid #E2E8F0", borderRadius: 8, background: "#FFF", fontSize: 13, color: "#103b51" }} />
+                {searchQuery && <button onClick={() => setSearchQuery("")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#94A3B8", lineHeight: 1 }}>×</button>}
+              </div>
               <select value={serviceFilter} onChange={e => setServiceFilter(e.target.value)} style={{ flex: 2, minWidth: 180, padding: "8px 10px", border: "1px solid #E2E8F0", borderRadius: 8, background: "#FFF", fontSize: 13, color: "#103b51" }}>
                 {SERVICES.map(s => <option key={s}>{s}</option>)}
               </select>
@@ -397,7 +408,7 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
             {!discovering && filtered.length > 0 && (
               <>
                 <div style={{ fontSize: 12, color: "#94A3B8", marginBottom: 9, display: "flex", justifyContent: "space-between" }}>
-                  <span>{filtered.length} of {results.length} · sorted by score{lastRun && ` · fetched ${cacheAge(lastRun)}`}{isCacheFresh(lastRun) && " ✓"}</span>
+                  <span>{filtered.length} of {results.length}{query && ` matching "${searchQuery}"`} · sorted by score{lastRun && ` · fetched ${cacheAge(lastRun)}`}{isCacheFresh(lastRun) && " ✓"}</span>
                   <button onClick={clearResults} style={{ fontSize: 11, color: "#94A3B8", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Clear</button>
                 </div>
                 {filtered.map(rfp => (
