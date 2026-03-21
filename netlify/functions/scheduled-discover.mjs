@@ -98,8 +98,8 @@ async function fetchSamGov() {
 }
 
 async function fetchExternalScraper() {
-  const scraperUrl = process.env.EXTERNAL_SCRAPER_URL || "https://api.vibemap.com/scrape";
-  const apiKey = process.env.SCRAPE_API_KEY;
+  const scraperUrl = process.env.EXTERNAL_SCRAPER_URL || "https://api.vibemap.com/v0.3/scrape";
+  const apiKey = process.env.SCRAPE_API_KEY || "YCdPyIza7gpVA4UAJIuKrMUKV9BVwuP-7yfgPY_Ycg8";
   if (!apiKey) return [];
 
   const targetUrls = [
