@@ -85,8 +85,8 @@ function normalizeRecords(records) {
       const keywords = ["engagement", "planning", "design", "equity", "training", "capacity", "evaluation", "stakeholder", "community", "facilitation"];
       return keywords.some(kw => text.includes(kw));
     })
-    .map(r => ({
-      id: `ca-grants-${r._id || r.grantTitle?.slice(0, 30).replace(/\s+/g, "-")}`,
+    .map((r, i) => ({
+      id: `ca-grants-${r._id || r.grantTitle?.slice(0, 30).replace(/\s+/g, "-") || `unknown-${i}`}`,
       title: r.grantTitle || "Untitled",
       agency: r.grantorName || r.agencyName || "California State Agency",
       url: r.applicationLink || r.grantLink || null,

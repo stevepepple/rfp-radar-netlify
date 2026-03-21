@@ -87,7 +87,7 @@ const CACHE_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours
 function cacheAge(lastRun) {
   if (!lastRun) return null;
   const ms = Date.now() - new Date(lastRun).getTime();
-  if (ms < 0) return null;
+  if (!Number.isFinite(ms) || ms < 0) return null;
   const mins = Math.floor(ms / 60000);
   if (mins < 1) return "just now";
   if (mins < 60) return `${mins}m ago`;
@@ -716,12 +716,12 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
       {/* ── Header ── */}
       <div style={{ background: "#103b51", padding: "13px 18px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
         <div>
-          <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: "#475569", marginBottom: 2 }}>CivicMakers · Internal</div>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: "#94A3B8", marginBottom: 2 }}>CivicMakers · Internal</div>
           <div style={{ fontSize: 16, fontWeight: 700, color: "#F1F5F9", letterSpacing: "-.01em", fontFamily: "Montserrat, Helvetica, Arial, sans-serif" }}>RFP Radar</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {urgentCount > 0 && <Chip label={`⚠ ${urgentCount} deadline soon`} bg="#FEF3C7" fg="#92400E" />}
-          {lastRun && <div style={{ fontSize: 11, color: "#475569", textAlign: "right" }}>Last run<br /><span style={{ color: "#64748B" }}>{fmtDate(lastRun)}</span></div>}
+          {lastRun && <div style={{ fontSize: 11, color: "#94A3B8", textAlign: "right" }}>Last run<br /><span style={{ color: "#CBD5E1" }}>{fmtDate(lastRun)}</span></div>}
         </div>
       </div>
 

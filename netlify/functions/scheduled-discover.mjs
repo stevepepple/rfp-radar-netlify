@@ -50,8 +50,8 @@ async function fetchCaGrants() {
         const text = `${r.grantTitle || ""} ${r.description || ""}`.toLowerCase();
         return keywords.some(kw => text.includes(kw));
       })
-      .map(r => ({
-        id: `ca-grants-${r._id || Date.now()}`,
+      .map((r, i) => ({
+        id: `ca-grants-${r._id || r.grantTitle?.replace(/\s+/g, "-").slice(0, 40) || `unknown-${i}`}`,
         title: r.grantTitle || "Untitled",
         agency: r.grantorName || "California State Agency",
         url: r.applicationLink || null,
