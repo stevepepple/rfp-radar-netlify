@@ -169,6 +169,7 @@ async function fetchExternalScraper() {
 
 export default async () => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
+  const scraperUrl = process.env.EXTERNAL_SCRAPER_URL;
 
   try {
     // Fetch from all direct APIs in parallel
@@ -180,7 +181,7 @@ export default async () => {
     ]);
 
     const allResults = [...grantsGov, ...caGrants, ...samGov, ...externalScraped];
-    console.log(`Scheduled: fetched ${allResults.length} raw opportunities from APIs`);
+    console.log(`Scheduled: fetched ${allResults.length} raw opportunities from APIs & scraper`);
 
     // Score with LLM if available (fast, no web_search)
     let finalResults = allResults;
