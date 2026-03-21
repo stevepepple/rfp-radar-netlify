@@ -54,10 +54,10 @@ const SOURCES = [
 ];
 
 const TIER_STYLE = {
-  Primary:      { bg: "#DBEAFE", fg: "#1E40AF" },
-  Watch:        { bg: "#DCFCE7", fg: "#166534" },
+  Primary:      { bg: "#d4eae6", fg: "#103b51" },
+  Watch:        { bg: "#fde8ea", fg: "#c11948" },
   Supplement:   { bg: "#FEF3C7", fg: "#92400E" },
-  Relationship: { bg: "#EDE9FE", fg: "#5B21B6" },
+  Relationship: { bg: "#e8e4f0", fg: "#386a7c" },
 };
 
 const STORAGE_KEYS = {
@@ -136,7 +136,7 @@ function Score({ score }) {
   );
 }
 
-function StatCard({ label, value, accent = "#1E293B" }) {
+function StatCard({ label, value, accent = "#103b51" }) {
   return (
     <div style={{ background: "#FFF", border: "1px solid #E2E8F0", borderRadius: 10, padding: "10px 14px", flex: 1, minWidth: 56 }}>
       <div style={{ fontSize: 22, fontWeight: 700, color: accent, lineHeight: 1 }}>{value}</div>
@@ -157,7 +157,7 @@ function DiscoverCard({ rfp, expanded, onToggle, inPipeline, onAdd }) {
       <div onClick={onToggle} style={{ padding: "13px 15px", display: "flex", gap: 11, alignItems: "flex-start", cursor: "pointer", background: expanded ? "#FAFBFD" : "#FFF" }}>
         <Score score={rfp.relevanceScore || 5} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: "#1E293B", lineHeight: 1.35, marginBottom: 3 }}>{rfp.title}</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "#103b51", lineHeight: 1.35, marginBottom: 3 }}>{rfp.title}</div>
           <div style={{ fontSize: 12, color: "#64748B", marginBottom: 6 }}>{rfp.agency}</div>
           <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
             {rfp.serviceArea && <Chip label={rfp.serviceArea} />}
@@ -175,7 +175,7 @@ function DiscoverCard({ rfp, expanded, onToggle, inPipeline, onAdd }) {
           {rfp.relevanceReason && (
             <div style={{ background: sc.bg, border: `1px solid ${sc.border}`, borderRadius: 8, padding: "9px 12px", marginBottom: 11 }}>
               <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: sc.fg, marginBottom: 3 }}>Why it matches CivicMakers</div>
-              <div style={{ fontSize: 13, color: "#1E293B", lineHeight: 1.55 }}>{rfp.relevanceReason}</div>
+              <div style={{ fontSize: 13, color: "#103b51", lineHeight: 1.55 }}>{rfp.relevanceReason}</div>
             </div>
           )}
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
@@ -184,10 +184,10 @@ function DiscoverCard({ rfp, expanded, onToggle, inPipeline, onAdd }) {
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
               {rfp.url && rfp.url !== "null" && (
-                <a href={rfp.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: 12, color: "#3B82F6", textDecoration: "underline" }}>View RFP →</a>
+                <a href={rfp.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: 12, color: "#ef525f", textDecoration: "underline" }}>View RFP →</a>
               )}
               {!inPipeline
-                ? <button onClick={e => { e.stopPropagation(); onAdd(); }} style={{ fontSize: 12, fontWeight: 700, padding: "6px 14px", background: "#0F172A", color: "#FFF", border: "none", borderRadius: 8, cursor: "pointer" }}>+ Add to Pipeline</button>
+                ? <button onClick={e => { e.stopPropagation(); onAdd(); }} style={{ fontSize: 12, fontWeight: 700, padding: "6px 14px", background: "#103b51", color: "#FFF", border: "none", borderRadius: 8, cursor: "pointer" }}>+ Add to Pipeline</button>
                 : <Chip label="✓ In pipeline" bg="#ECFDF5" fg="#065F46" />
               }
             </div>
@@ -210,7 +210,7 @@ function PipelineCard({ rfp, expanded, onToggle, onStatusChange, onNotesChange, 
       <div onClick={onToggle} style={{ padding: "13px 15px", display: "flex", gap: 11, alignItems: "flex-start", cursor: "pointer" }}>
         <Score score={rfp.relevanceScore || 5} />
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: 14, fontWeight: 600, color: "#1E293B", lineHeight: 1.35, marginBottom: 3 }}>{rfp.title}</div>
+          <div style={{ fontSize: 14, fontWeight: 600, color: "#103b51", lineHeight: 1.35, marginBottom: 3 }}>{rfp.title}</div>
           <div style={{ fontSize: 12, color: "#64748B", marginBottom: 6 }}>{rfp.agency}</div>
           <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
             <Chip label={rfp.status} bg={sm.bg} fg={sm.fg} dot={sm.dot} />
@@ -247,13 +247,13 @@ function PipelineCard({ rfp, expanded, onToggle, onStatusChange, onNotesChange, 
               onChange={e => onNotesChange(e.target.value)}
               onClick={e => e.stopPropagation()}
               placeholder="Contacts, strategy, teaming partners, deadline reminders…"
-              style={{ width: "100%", minHeight: 72, fontSize: 13, padding: "8px 10px", boxSizing: "border-box", border: "1px solid #E2E8F0", borderRadius: 8, background: "#FAFBFD", color: "#1E293B", resize: "vertical", lineHeight: 1.55 }}
+              style={{ width: "100%", minHeight: 72, fontSize: 13, padding: "8px 10px", boxSizing: "border-box", border: "1px solid #E2E8F0", borderRadius: 8, background: "#FAFBFD", color: "#103b51", resize: "vertical", lineHeight: 1.55 }}
             />
           </div>
 
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             {rfp.url && rfp.url !== "null"
-              ? <a href={rfp.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: 12, color: "#3B82F6", textDecoration: "underline" }}>View original RFP →</a>
+              ? <a href={rfp.url} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()} style={{ fontSize: 12, color: "#ef525f", textDecoration: "underline" }}>View original RFP →</a>
               : <span />
             }
             <button onClick={e => { e.stopPropagation(); onRemove(); }} style={{ fontSize: 12, color: "#94A3B8", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Remove</button>
@@ -270,7 +270,7 @@ function ManualEntryModal({ onSave, onClose }) {
   const [form, setForm] = useState({ title: "", agency: "", url: "", deadline: "", budget: "", serviceArea: SERVICES[1], description: "", notes: "" });
   const [err, setErr] = useState("");
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
-  const inp = { width: "100%", fontSize: 13, padding: "8px 10px", border: "1px solid #E2E8F0", borderRadius: 8, background: "#FFF", color: "#1E293B" };
+  const inp = { width: "100%", fontSize: 13, padding: "8px 10px", border: "1px solid #E2E8F0", borderRadius: 8, background: "#FFF", color: "#103b51" };
   const lbl = { fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: "#64748B", display: "block", marginBottom: 5 };
 
   const handleSave = () => {
@@ -283,7 +283,7 @@ function ManualEntryModal({ onSave, onClose }) {
     <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
       <div style={{ background: "#FFF", borderRadius: 14, padding: "22px", width: "min(520px, 96vw)", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,.2)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-          <span style={{ fontSize: 16, fontWeight: 700, color: "#0F172A" }}>Add opportunity manually</span>
+          <span style={{ fontSize: 16, fontWeight: 700, color: "#103b51" }}>Add opportunity manually</span>
           <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, color: "#94A3B8", cursor: "pointer" }}>×</button>
         </div>
         {[["Title *","title","Full RFP/RFQ title"],["Agency *","agency","Issuing organization"],["URL","url","https://…"],["Deadline","deadline","e.g. April 15, 2026"],["Budget","budget","e.g. $50,000"]].map(([label, key, ph]) => (
@@ -309,7 +309,7 @@ function ManualEntryModal({ onSave, onClose }) {
         {err && <div style={{ fontSize: 12, color: "#991B1B", marginBottom: 10 }}>{err}</div>}
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
           <button onClick={onClose} style={{ fontSize: 13, padding: "8px 16px", background: "none", border: "1px solid #E2E8F0", borderRadius: 8, cursor: "pointer", color: "#64748B" }}>Cancel</button>
-          <button onClick={handleSave} style={{ fontSize: 13, fontWeight: 700, padding: "8px 18px", background: "#0F172A", color: "#FFF", border: "none", borderRadius: 8, cursor: "pointer" }}>Add to Pipeline</button>
+          <button onClick={handleSave} style={{ fontSize: 13, fontWeight: 700, padding: "8px 18px", background: "#103b51", color: "#FFF", border: "none", borderRadius: 8, cursor: "pointer" }}>Add to Pipeline</button>
         </div>
       </div>
     </div>
@@ -329,7 +329,7 @@ function SourcesTab() {
             <Chip label={s.tier} bg={t.bg} fg={t.fg} />
             <div style={{ flex: 1 }}>
               <div style={{ display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap" }}>
-                <a href={s.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, fontWeight: 600, color: "#1E293B", textDecoration: "none" }}>{s.name}</a>
+                <a href={s.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, fontWeight: 600, color: "#103b51", textDecoration: "none" }}>{s.name}</a>
                 <span style={{ fontSize: 11, color: "#94A3B8" }}>{s.type}</span>
               </div>
             </div>
@@ -339,8 +339,8 @@ function SourcesTab() {
       <div style={{ marginTop: 18, padding: "13px 14px", background: "#F8FAFF", border: "1px solid #DBEAFE", borderRadius: 10 }}>
         <div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: "#1E40AF", marginBottom: 8 }}>Cal eProcure UNSPSC codes</div>
         {[["80101500","Management consulting"],["80101501","Organizational development"],["80111600","Public relations"],["80161600","Training programs"],["93141702","Community programs"],["80141602","Facilitation services"]].map(([code, label]) => (
-          <div key={code} style={{ fontSize: 12, color: "#1E293B", padding: "2px 0" }}>
-            <span style={{ fontFamily: "monospace", color: "#3B82F6", marginRight: 8 }}>{code}</span>{label}
+          <div key={code} style={{ fontSize: 12, color: "#103b51", padding: "2px 0" }}>
+            <span style={{ fontFamily: "monospace", color: "#ef525f", marginRight: 8 }}>{code}</span>{label}
           </div>
         ))}
       </div>
@@ -550,7 +550,7 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
           discoveredAt: now,
           isManual: false,
           relevanceScore: r.relevanceScore ?? 5,
-          relevanceReason: r.relevanceReason ?? "Scoring in progress…",
+          relevanceReason: r.relevanceReason ?? "From direct API query",
           serviceArea: r.serviceArea ?? "Community & Stakeholder Engagement",
         }));
 
@@ -586,49 +586,48 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
           .catch(err => console.error("Scoring error:", err));
       }
 
-      // Wait for LLM gap-fill results (slower, ~20-30s)
-      const gapFillRes = await gapFillPromise;
-      if (gapFillRes.ok) {
-        const reader = gapFillRes.body.getReader();
-        const decoder = new TextDecoder();
-        let buf = "";
-        let text = "";
+      // LLM gap-fill: best-effort, non-blocking — don't fail if Anthropic credits are low
+      gapFillPromise
+        .then(async (gapFillRes) => {
+          if (!gapFillRes.ok) return;
+          const reader = gapFillRes.body.getReader();
+          const decoder = new TextDecoder();
+          let buf = "";
+          let text = "";
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buf += decoder.decode(value, { stream: true });
-          const lines = buf.split("\n");
-          buf = lines.pop();
-          for (const line of lines) {
-            if (!line.trim()) continue;
-            try {
-              const msg = JSON.parse(line);
-              if (msg.type === "error") throw new Error(msg.message);
-              if (msg.type === "result") text = msg.text;
-            } catch (e) {
-              if (e.message && !e.message.startsWith("Unexpected")) throw e;
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buf += decoder.decode(value, { stream: true });
+            const lines = buf.split("\n");
+            buf = lines.pop();
+            for (const line of lines) {
+              if (!line.trim()) continue;
+              try {
+                const msg = JSON.parse(line);
+                if (msg.type === "result") text = msg.text;
+              } catch { /* skip */ }
             }
           }
-        }
 
-        if (text) {
-          const rfps = parseRfpJson(text);
-          if (rfps) {
-            const enriched = rfps.map((r, i) => ({
-              ...r,
-              id: r.id || `llm-${Date.now()}-${i}`,
-              discoveredAt: now,
-              isManual: false,
-            }));
-            setResults(prev => {
-              const merged = mergeResults(enriched, prev);
-              saveLocal(STORAGE_KEYS.results, merged);
-              return merged;
-            });
+          if (text) {
+            const rfps = parseRfpJson(text);
+            if (rfps) {
+              const enriched = rfps.map((r, i) => ({
+                ...r,
+                id: r.id || `llm-${Date.now()}-${i}`,
+                discoveredAt: now,
+                isManual: false,
+              }));
+              setResults(prev => {
+                const merged = mergeResults(enriched, prev);
+                saveLocal(STORAGE_KEYS.results, merged);
+                return merged;
+              });
+            }
           }
-        }
-      }
+        })
+        .catch(err => console.warn("LLM gap-fill skipped:", err.message));
 
       setLastRun(now);
       saveLocal(STORAGE_KEYS.lastRun, now);
@@ -689,13 +688,13 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
   // ── Render ─────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ background: "#F8FAFC", minHeight: "100vh" }}>
+    <div style={{ background: "#f4f3f0", minHeight: "100vh" }}>
 
       {/* ── Header ── */}
-      <div style={{ background: "#0F172A", padding: "13px 18px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+      <div style={{ background: "#103b51", padding: "13px 18px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
         <div>
           <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: "#475569", marginBottom: 2 }}>CivicMakers · Internal</div>
-          <div style={{ fontSize: 16, fontWeight: 700, color: "#F1F5F9", letterSpacing: "-.01em" }}>📡 RFP Radar</div>
+          <div style={{ fontSize: 16, fontWeight: 700, color: "#F1F5F9", letterSpacing: "-.01em", fontFamily: "Montserrat, Helvetica, Arial, sans-serif" }}>RFP Radar</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {urgentCount > 0 && <Chip label={`⚠ ${urgentCount} deadline soon`} bg="#FEF3C7" fg="#92400E" />}
@@ -709,14 +708,14 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
         <div style={{ display: "flex", gap: 7, marginBottom: 16 }}>
           <StatCard label="Discovered" value={results.length} />
           <StatCard label="Pipeline"   value={pipeline.length} />
-          <StatCard label="Active"     value={activeCount}    accent="#3B82F6" />
-          <StatCard label="Won"        value={wonCount}       accent="#22C55E" />
+          <StatCard label="Active"     value={activeCount}    accent="#ef525f" />
+          <StatCard label="Won"        value={wonCount}       accent="#24a791" />
         </div>
 
         {/* ── Tabs ── */}
         <div style={{ display: "flex", background: "#E2E8F0", borderRadius: 11, padding: 3, marginBottom: 16 }}>
           {[{ id: "discover", label: "Discover" }, { id: "pipeline", label: `Pipeline${pipeline.length ? ` (${pipeline.length})` : ""}` }, { id: "sources", label: "Sources" }].map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, padding: "7px 0", fontSize: 13, fontWeight: tab === t.id ? 700 : 400, background: tab === t.id ? "#FFF" : "transparent", color: tab === t.id ? "#1E293B" : "#64748B", border: "none", borderRadius: 8, cursor: "pointer", boxShadow: tab === t.id ? "0 1px 4px rgba(0,0,0,.1)" : "none", transition: "all .15s" }}>
+            <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, padding: "7px 0", fontSize: 13, fontWeight: tab === t.id ? 700 : 400, background: tab === t.id ? "#FFF" : "transparent", color: tab === t.id ? "#103b51" : "#64748B", border: "none", borderRadius: 8, cursor: "pointer", boxShadow: tab === t.id ? "0 1px 4px rgba(0,0,0,.1)" : "none", transition: "all .15s" }}>
               {t.label}
             </button>
           ))}
@@ -726,18 +725,18 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
         {tab === "discover" && (
           <div>
             <div style={{ display: "flex", gap: 7, marginBottom: 10, flexWrap: "wrap" }}>
-              <select value={serviceFilter} onChange={e => setServiceFilter(e.target.value)} style={{ flex: 2, minWidth: 180, padding: "8px 10px", border: "1px solid #E2E8F0", borderRadius: 8, background: "#FFF", fontSize: 13, color: "#1E293B" }}>
+              <select value={serviceFilter} onChange={e => setServiceFilter(e.target.value)} style={{ flex: 2, minWidth: 180, padding: "8px 10px", border: "1px solid #E2E8F0", borderRadius: 8, background: "#FFF", fontSize: 13, color: "#103b51" }}>
                 {SERVICES.map(s => <option key={s}>{s}</option>)}
               </select>
-              <select value={minScore} onChange={e => setMinScore(Number(e.target.value))} style={{ flex: 1, minWidth: 110, padding: "8px 10px", border: "1px solid #E2E8F0", borderRadius: 8, background: "#FFF", fontSize: 13, color: "#1E293B" }}>
+              <select value={minScore} onChange={e => setMinScore(Number(e.target.value))} style={{ flex: 1, minWidth: 110, padding: "8px 10px", border: "1px solid #E2E8F0", borderRadius: 8, background: "#FFF", fontSize: 13, color: "#103b51" }}>
                 {[3,4,5,6,7,8].map(n => <option key={n} value={n}>Score {n}+</option>)}
               </select>
               {isCacheFresh(lastRun) && results.length > 0 ? (
-                <button onClick={() => discover(true)} disabled={discovering} style={{ padding: "8px 20px", fontSize: 13, fontWeight: 700, background: discovering ? "#64748B" : "#FFF", color: discovering ? "#F8FAFC" : "#0F172A", border: "1px solid #E2E8F0", borderRadius: 8, cursor: discovering ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}>
+                <button onClick={() => discover(true)} disabled={discovering} style={{ padding: "8px 20px", fontSize: 13, fontWeight: 700, background: discovering ? "#64748B" : "#FFF", color: discovering ? "#F8FAFC" : "#103b51", border: "1px solid #E2E8F0", borderRadius: 8, cursor: discovering ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}>
                   {discovering ? "Searching…" : `Refresh ↻ (cached ${cacheAge(lastRun)})`}
                 </button>
               ) : (
-                <button onClick={() => discover(true)} disabled={discovering} style={{ padding: "8px 20px", fontSize: 13, fontWeight: 700, background: discovering ? "#64748B" : "#0F172A", color: "#F8FAFC", border: "none", borderRadius: 8, cursor: discovering ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}>
+                <button onClick={() => discover(true)} disabled={discovering} style={{ padding: "8px 20px", fontSize: 13, fontWeight: 700, background: discovering ? "#64748B" : "#103b51", color: "#F8FAFC", border: "none", borderRadius: 8, cursor: discovering ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}>
                   {discovering ? "Searching…" : "Run Discovery ↗"}
                 </button>
               )}
@@ -746,8 +745,8 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
             {discovering && (
               <div style={{ textAlign: "center", padding: "50px 0" }}>
                 <div style={{ fontSize: 14, color: "#475569", marginBottom: 5 }}>Searching California procurement portals…</div>
-                <div style={{ fontSize: 12, color: "#94A3B8" }}>Direct APIs (~3s) → LLM scoring (~5s) → Gap-fill search (~20s)</div>
-                {results.length > 0 && <div style={{ fontSize: 12, color: "#3B82F6", marginTop: 6 }}>{results.length} results so far — still searching…</div>}
+                <div style={{ fontSize: 12, color: "#94A3B8" }}>Querying grants.gov, CA Grants Portal, SAM.gov…</div>
+                {results.length > 0 && <div style={{ fontSize: 12, color: "#ef525f", marginTop: 6 }}>{results.length} results so far — still searching…</div>}
               </div>
             )}
 
@@ -783,7 +782,7 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
         {tab === "pipeline" && (
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
-              <button onClick={() => setShowManual(true)} style={{ fontSize: 13, fontWeight: 600, padding: "7px 16px", background: "#FFF", color: "#1E293B", border: "1px solid #E2E8F0", borderRadius: 8, cursor: "pointer" }}>+ Add manually</button>
+              <button onClick={() => setShowManual(true)} style={{ fontSize: 13, fontWeight: 600, padding: "7px 16px", background: "#FFF", color: "#103b51", border: "1px solid #E2E8F0", borderRadius: 8, cursor: "pointer" }}>+ Add manually</button>
               {pipeline.length > 0 && <button onClick={exportCSV} style={{ fontSize: 12, color: "#64748B", background: "none", border: "1px solid #E2E8F0", borderRadius: 8, padding: "6px 12px", cursor: "pointer" }}>Export CSV ↓</button>}
             </div>
 
