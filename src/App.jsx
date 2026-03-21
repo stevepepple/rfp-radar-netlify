@@ -362,11 +362,63 @@ export default function App() {
   const [expandedId,    setExpandedId]    = useState(null);
   const [showManual,    setShowManual]    = useState(false);
 
-  // Load from localStorage on mount
+  // Load from localStorage on mount, then prefetch from server cache
   useEffect(() => {
     const r = loadLocal(STORAGE_KEYS.results);  if (r) setResults(r);
     const p = loadLocal(STORAGE_KEYS.pipeline); if (p) setPipeline(p);
     const l = loadLocal(STORAGE_KEYS.lastRun);  if (l) setLastRun(l);
+
+    // Prefetch: load server-cached results (instant, no API cost)
+    fetch("/.netlify/functions/cached")
+      .then(res => {
+        if (res.status === 204 || !res.ok) return null;
+        return res.json();
+      })
+      .then(data => {
+        if (!data || !data.results) return;
+
+        // Parse the cached text the same way discover() does
+        const text = data.results;
+        let rfps;
+        try {
+          const strict = text.match(/\[\s*\{[\s\S]*\}\s*\]/);
+          if (strict) {
+            rfps = JSON.parse(strict[0]);
+          } else {
+            const start = text.indexOf("[");
+            const end   = text.lastIndexOf("]");
+            if (start === -1 || end === -1) return;
+            rfps = JSON.parse(text.slice(start, end + 1));
+          }
+        } catch { return; }
+
+        const enriched = rfps.map((r, i) => ({
+          ...r,
+          id: r.id || `rfp-${Date.now()}-${i}`,
+          discoveredAt: data.cachedAt,
+          isManual: false,
+        }));
+
+        // Merge with any existing localStorage results (dedup by URL)
+        setResults(prev => {
+          const existingUrls = new Set(prev.map(r => r.url).filter(Boolean));
+          const fresh = enriched.filter(r => !r.url || !existingUrls.has(r.url));
+          if (fresh.length === 0) return prev;
+          const merged = [...fresh, ...prev];
+          saveLocal(STORAGE_KEYS.results, merged);
+          return merged;
+        });
+
+        // Update lastRun if server cache is newer
+        setLastRun(prev => {
+          if (!prev || new Date(data.cachedAt) > new Date(prev)) {
+            saveLocal(STORAGE_KEYS.lastRun, data.cachedAt);
+            return data.cachedAt;
+          }
+          return prev;
+        });
+      })
+      .catch(() => {}); // prefetch failure is non-fatal
   }, []);
 
   // ── Discovery ──────────────────────────────────────────────────────────────
