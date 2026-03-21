@@ -3,6 +3,13 @@
   publish       = "dist"
   functions     = "netlify/functions"
 
+[functions]
+  external_node_modules = []
+  node_bundler          = "esbuild"
+
+[functions."discover"]
+  timeout = 60
+
 [dev]
   command       = "npm run dev"
   port          = 8888
