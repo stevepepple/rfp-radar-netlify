@@ -31,22 +31,38 @@ const SERVICES = [
 ];
 
 const SOURCES = [
-  { name: "Cal eProcure / CSCR",          url: "https://caleprocure.ca.gov",                            tier: "Primary",      type: "State" },
+  // ── Direct API sources ──
+  { name: "grants.gov",                    url: "https://www.grants.gov",                               tier: "Primary",      type: "Federal" },
   { name: "California Grants Portal",      url: "https://www.grants.ca.gov",                            tier: "Primary",      type: "State" },
+  { name: "SAM.gov",                       url: "https://sam.gov",                                      tier: "Primary",      type: "Federal" },
+  // ── State portals ──
+  { name: "Cal eProcure / CSCR",          url: "https://caleprocure.ca.gov",                            tier: "Primary",      type: "State" },
   { name: "OpenGov Procurement",           url: "https://procurement.opengov.com",                      tier: "Primary",      type: "Local Gov" },
   { name: "PlanetBids",                    url: "https://pbsystem.planetbids.com",                      tier: "Primary",      type: "Local Gov" },
-  { name: "Covered California",            url: "https://hbex.coveredca.com/solicitations/",            tier: "Watch",        type: "State Agency" },
-  { name: "Strategic Growth Council",      url: "https://sgc.ca.gov",                                   tier: "Watch",        type: "State Agency" },
-  { name: "Marin County Contracting",      url: "https://www.marincounty.gov/contracting-opportunities",tier: "Watch",        type: "County" },
-  { name: "San Mateo County",              url: "https://www.smcgov.org/ceo/request-proposals-rfp",     tier: "Watch",        type: "County" },
+  // ── Transit & regional ──
+  { name: "BART Procurement",             url: "https://www.bart.gov/about/business/procurement",       tier: "Watch",        type: "Transit" },
+  { name: "ABAG / MTC",                    url: "https://mtc.ca.gov/about-mtc/careers-and-contracting", tier: "Watch",        type: "Regional" },
+  // ── City portals ──
+  { name: "SF OEWD Bid Opportunities",    url: "https://sf.gov/information/bid-opportunities",          tier: "Watch",        type: "City" },
   { name: "City of San Jose",              url: "https://www.sanjoseca.gov/doing-business/bids-purchasing", tier: "Watch",   type: "City" },
   { name: "City of Oakland",               url: "https://www.oaklandca.gov/topics/city-of-oakland-bids",tier: "Watch",        type: "City" },
-  { name: "ABAG / MTC",                    url: "https://mtc.ca.gov/about-mtc/careers-and-contracting", tier: "Watch",        type: "Regional" },
-  { name: "grants.gov",                    url: "https://www.grants.gov",                               tier: "Watch",        type: "Federal" },
-  { name: "SAM.gov",                       url: "https://sam.gov",                                      tier: "Supplement",   type: "Federal" },
-  { name: "California Community Foundation",url: "https://www.calfund.org/grants/",                    tier: "Watch",        type: "Foundation" },
-  { name: "The California Endowment",      url: "https://www.calendow.org",                             tier: "Watch",        type: "Foundation" },
-  { name: "San Francisco Foundation",      url: "https://sff.org",                                      tier: "Watch",        type: "Foundation" },
+  // ── County portals ──
+  { name: "Marin County Contracting",      url: "https://www.marincounty.gov/contracting-opportunities",tier: "Watch",        type: "County" },
+  { name: "San Mateo County",              url: "https://www.smcgov.org/ceo/request-proposals-rfp",     tier: "Watch",        type: "County" },
+  { name: "Orange County Water District",  url: "https://www.ocwd.com/about/rfp-contracts/",            tier: "Watch",        type: "Special District" },
+  { name: "MWDOC",                         url: "https://www.mwdoc.com/about-mwdoc/rfps-rfqs/",         tier: "Watch",        type: "Special District" },
+  // ── Housing authorities ──
+  { name: "HACLA Open Solicitations",      url: "https://www.hacla.org/procurement",                    tier: "Watch",        type: "Housing Authority" },
+  // ── State agencies ──
+  { name: "Covered California",            url: "https://hbex.coveredca.com/solicitations/",            tier: "Watch",        type: "State Agency" },
+  { name: "Strategic Growth Council",      url: "https://sgc.ca.gov",                                   tier: "Watch",        type: "State Agency" },
+  // ── Higher Ed ──
+  { name: "Chico State Procurement",      url: "https://www.csuchico.edu/pcs/current-bids.shtml",      tier: "Watch",        type: "Higher Ed" },
+  // ── Foundations ──
+  { name: "California Community Foundation",url: "https://www.calfund.org/grants/",                    tier: "Supplement",   type: "Foundation" },
+  { name: "The California Endowment",      url: "https://www.calendow.org",                             tier: "Supplement",   type: "Foundation" },
+  { name: "San Francisco Foundation",      url: "https://sff.org",                                      tier: "Supplement",   type: "Foundation" },
+  // ── Aggregators & networks ──
   { name: "BidNet Direct CA",              url: "https://www.bidnetdirect.com/california",              tier: "Supplement",   type: "Aggregator" },
   { name: "HigherGov",                     url: "https://www.highergov.com",                            tier: "Supplement",   type: "Aggregator" },
   { name: "CA Workforce Association",      url: "https://www.calworkforce.org",                         tier: "Relationship", type: "Network" },
@@ -160,6 +176,7 @@ function DiscoverCard({ rfp, expanded, onToggle, inPipeline, onAdd }) {
           <div style={{ fontSize: 14, fontWeight: 600, color: "#103b51", lineHeight: 1.35, marginBottom: 3 }}>{rfp.title}</div>
           <div style={{ fontSize: 12, color: "#64748B", marginBottom: 6 }}>{rfp.agency}</div>
           <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+            {rfp.source && <Chip label={rfp.source} bg="#e3e1da" fg="#386a7c" />}
             {rfp.serviceArea && <Chip label={rfp.serviceArea} />}
             {rfp.deadline && <Chip label={`Due: ${rfp.deadline}`} bg={past ? "#FEE2E2" : urgent ? "#FEF3C7" : "#F1F5F9"} fg={past ? "#991B1B" : urgent ? "#92400E" : "#475569"} />}
             {rfp.budget && <Chip label={rfp.budget} bg="#EDE9FE" fg="#5B21B6" />}
@@ -502,16 +519,22 @@ Search focus: ${focus}
 
 IMPORTANT: Do NOT search grants.gov, SAM.gov, or grants.ca.gov — those are already covered by direct API queries.
 
-Search for current California RFPs, RFQs, and consulting solicitations on these sources ONLY:
+Search for current California RFPs, RFQs, IFBs, and consulting solicitations on these sources ONLY:
 - caleprocure.ca.gov (California State Contracts Register)
 - procurement.opengov.com (Bay Area counties and cities)
 - hbex.coveredca.com/solicitations (Covered California)
+- sf.gov/information/bid-opportunities (San Francisco OEWD)
+- bart.gov/about/business/procurement (BART)
+- ocwd.com/about/rfp-contracts (Orange County Water District)
+- mwdoc.com/about-mwdoc/rfps-rfqs (Municipal Water District of Orange County)
+- hacla.org/procurement (Housing Authority of City of Los Angeles)
+- csuchico.edu/pcs/current-bids.shtml (Chico State)
 - Marin, San Mateo, Alameda, Santa Cruz, Sonoma county procurement pages
-- San Jose, San Francisco, Oakland, Sacramento city portals
+- San Jose, Oakland, Sacramento city portals
 - sgc.ca.gov (Strategic Growth Council)
 - Foundation pages: calfund.org, calendow.org, sff.org
 
-Use keywords: "community engagement consultant RFP", "strategic planning consultant RFP", "human-centered design consulting RFP", "equity assessment consultant RFP".
+Use keywords: "community engagement consultant RFP", "strategic planning consultant RFP", "human-centered design consulting RFP", "equity assessment consultant RFP", "workforce development RFP California".
 
 Return 6–8 best matches as a JSON array. Each object must have exactly:
 {
