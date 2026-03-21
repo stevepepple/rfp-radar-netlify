@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
 
@@ -361,12 +361,20 @@ export default function App() {
   const [lastRun,       setLastRun]       = useState(null);
   const [expandedId,    setExpandedId]    = useState(null);
   const [showManual,    setShowManual]    = useState(false);
+  const discoverRef = useRef(null);
 
-  // Load from localStorage on mount, then prefetch from server cache
+  // Load from localStorage on mount, then prefetch from server cache,
+  // then auto-discover if no data is available.
   useEffect(() => {
     const r = loadLocal(STORAGE_KEYS.results);  if (r) setResults(r);
     const p = loadLocal(STORAGE_KEYS.pipeline); if (p) setPipeline(p);
     const l = loadLocal(STORAGE_KEYS.lastRun);  if (l) setLastRun(l);
+
+    const hasLocalResults = r && r.length > 0;
+    const localCacheFresh = hasLocalResults && isCacheFresh(l);
+
+    // If local cache is fresh, no need to fetch anything else
+    if (localCacheFresh) return;
 
     // Prefetch: load server-cached results (instant, no API cost)
     fetch("/.netlify/functions/cached")
@@ -375,7 +383,11 @@ export default function App() {
         return res.json();
       })
       .then(data => {
-        if (!data || !data.results) return;
+        if (!data || !data.results) {
+          // No server cache either — auto-trigger live discovery
+          if (!hasLocalResults) discoverRef.current();
+          return;
+        }
 
         // Parse the cached text the same way discover() does
         const text = data.results;
@@ -387,10 +399,16 @@ export default function App() {
           } else {
             const start = text.indexOf("[");
             const end   = text.lastIndexOf("]");
-            if (start === -1 || end === -1) return;
+            if (start === -1 || end === -1) {
+              if (!hasLocalResults) discoverRef.current();
+              return;
+            }
             rfps = JSON.parse(text.slice(start, end + 1));
           }
-        } catch { return; }
+        } catch {
+          if (!hasLocalResults) discoverRef.current();
+          return;
+        }
 
         const enriched = rfps.map((r, i) => ({
           ...r,
@@ -418,7 +436,10 @@ export default function App() {
           return prev;
         });
       })
-      .catch(() => {}); // prefetch failure is non-fatal
+      .catch(() => {
+        // Prefetch failed — auto-discover if no local data
+        if (!hasLocalResults) discoverRef.current();
+      });
   }, []);
 
   // ── Discovery ──────────────────────────────────────────────────────────────
@@ -551,6 +572,9 @@ FINAL output: ONLY the raw JSON array. No markdown fences, no explanation. Start
     }
     setDiscovering(false);
   }
+
+  // Keep ref in sync so the mount effect can call discover without deps
+  discoverRef.current = () => discover(true);
 
   // ── Pipeline ops ───────────────────────────────────────────────────────────
 
