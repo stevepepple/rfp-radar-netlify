@@ -491,10 +491,31 @@ FINAL output: ONLY the raw JSON array. No markdown fences, no explanation. Start
         throw new Error(`API error ${res.status}: ${body}`);
       }
 
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
+      // Read NDJSON stream — server sends status/ping/result/error lines
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      let text = "";
 
-      const text = data.text || "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop();
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          try {
+            const msg = JSON.parse(line);
+            if (msg.type === "error") throw new Error(msg.message);
+            if (msg.type === "result") text = msg.text;
+          } catch (e) {
+            if (e.message && !e.message.startsWith("Unexpected")) throw e;
+          }
+        }
+      }
+
+      if (!text) throw new Error("No result received from discovery");
       let rfps;
       const strict = text.match(/\[\s*\{[\s\S]*\}\s*\]/);
       if (strict) {
