@@ -34,7 +34,7 @@ export default async (req) => {
       )
       AND "status" = 'Active'
       ORDER BY "openDate" DESC
-      LIMIT 20
+      LIMIT 100
     `.trim();
 
     const url = `${CKAN_API}?sql=${encodeURIComponent(sql)}`;
@@ -42,7 +42,7 @@ export default async (req) => {
 
     if (!res.ok) {
       // Fallback: try simpler datastore_search if SQL endpoint fails
-      const fallbackUrl = `https://data.ca.gov/api/3/action/datastore_search?resource_id=${RESOURCE_ID}&limit=30&sort=openDate desc`;
+      const fallbackUrl = `https://data.ca.gov/api/3/action/datastore_search?resource_id=${RESOURCE_ID}&limit=100&sort=openDate desc`;
       const fallbackRes = await fetch(fallbackUrl);
 
       if (!fallbackRes.ok) {
@@ -105,7 +105,7 @@ function normalizeRecords(records) {
       relevanceReason: null,
       serviceArea: null,
     }))
-    .slice(0, 15);
+    .slice(0, 100);
 }
 
 export const config = {
