@@ -169,7 +169,6 @@ async function fetchExternalScraper() {
 
 export default async () => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
-  const scraperUrl = process.env.EXTERNAL_SCRAPER_URL;
 
   try {
     // Fetch from all direct APIs in parallel
