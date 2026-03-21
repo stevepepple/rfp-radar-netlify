@@ -389,21 +389,18 @@ export default function App() {
           return;
         }
 
-        // Parse the cached text the same way discover() does
-        const text = data.results;
+        // Parse cached results — handles both JSON string and raw array
         let rfps;
         try {
-          const strict = text.match(/\[\s*\{[\s\S]*\}\s*\]/);
-          if (strict) {
-            rfps = JSON.parse(strict[0]);
+          if (typeof data.results === "string") {
+            const text = data.results;
+            const strict = text.match(/\[\s*\{[\s\S]*\}\s*\]/);
+            rfps = strict ? JSON.parse(strict[0]) : JSON.parse(text);
+          } else if (Array.isArray(data.results)) {
+            rfps = data.results;
           } else {
-            const start = text.indexOf("[");
-            const end   = text.lastIndexOf("]");
-            if (start === -1 || end === -1) {
-              if (!hasLocalResults) discoverRef.current();
-              return;
-            }
-            rfps = JSON.parse(text.slice(start, end + 1));
+            if (!hasLocalResults) discoverRef.current();
+            return;
           }
         } catch {
           if (!hasLocalResults) discoverRef.current();
@@ -442,7 +439,27 @@ export default function App() {
       });
   }, []);
 
-  // ── Discovery ──────────────────────────────────────────────────────────────
+  // ── Helpers for parsing LLM JSON responses ────────────────────────────────
+
+  function parseRfpJson(text) {
+    const strict = text.match(/\[\s*\{[\s\S]*\}\s*\]/);
+    if (strict) return JSON.parse(strict[0]);
+    const start = text.indexOf("[");
+    const end   = text.lastIndexOf("]");
+    if (start === -1 || end === -1) return null;
+    return JSON.parse(text.slice(start, end + 1));
+  }
+
+  function mergeResults(newItems, prev) {
+    const existingUrls = new Set(prev.map(r => r.url).filter(Boolean));
+    const existingIds  = new Set(prev.map(r => r.id));
+    const fresh = newItems.filter(r =>
+      (!r.url || !existingUrls.has(r.url)) && !existingIds.has(r.id)
+    );
+    return fresh.length > 0 ? [...fresh, ...prev] : prev;
+  }
+
+  // ── Discovery (hybrid pipeline) ──────────────────────────────────────────
 
   async function discover(forceRefresh = false) {
     // Serve cached results if fresh and not forcing
@@ -454,11 +471,26 @@ export default function App() {
     setError(null);
     setExpandedId(null);
 
+    const now = new Date().toISOString();
+
+    // ── Phase 1: Fire direct API fetches in parallel (fast, free) ──
+    const apiEndpoints = [
+      "/.netlify/functions/fetch-grants-gov",
+      "/.netlify/functions/fetch-ca-grants",
+      "/.netlify/functions/fetch-sam-gov",
+    ];
+
+    const apiPromises = apiEndpoints.map(url =>
+      fetch(url).then(r => r.ok ? r.json() : { results: [] }).catch(() => ({ results: [] }))
+    );
+
+    // ── Phase 2: Fire LLM gap-fill search in parallel (slower) ──
     const focus = serviceFilter === "All service areas"
       ? "all four service areas"
       : `"${serviceFilter}" specifically`;
 
-    const prompt = `Today is ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}. You are an RFP research assistant for CivicMakers, a California public sector design consultancy.
+    // Reduced prompt — skip sources covered by direct APIs
+    const gapFillPrompt = `Today is ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}. You are an RFP research assistant for CivicMakers, a California public sector design consultancy.
 
 CivicMakers' four service areas:
 1. Service Design & Evaluation — user research, service blueprints, program evaluation
@@ -466,23 +498,22 @@ CivicMakers' four service areas:
 3. Community & Stakeholder Engagement — outreach campaigns, facilitation, consensus building
 4. Training & Capacity Building — human-centered design training, applied learning programs
 
-Prior clients: City of San Jose, City of San Rafael, BayREN, Calbright College, Amplifi (disaster recovery), Santa Cruz County workforce ecosystem.
-
 Search focus: ${focus}
 
-Search for current California RFPs, RFQs, and consulting solicitations open or closing soon. Check:
+IMPORTANT: Do NOT search grants.gov, SAM.gov, or grants.ca.gov — those are already covered by direct API queries.
+
+Search for current California RFPs, RFQs, and consulting solicitations on these sources ONLY:
 - caleprocure.ca.gov (California State Contracts Register)
 - procurement.opengov.com (Bay Area counties and cities)
-- www.grants.ca.gov (CA Grants Portal)
 - hbex.coveredca.com/solicitations (Covered California)
 - Marin, San Mateo, Alameda, Santa Cruz, Sonoma county procurement pages
 - San Jose, San Francisco, Oakland, Sacramento city portals
 - sgc.ca.gov (Strategic Growth Council)
 - Foundation pages: calfund.org, calendow.org, sff.org
 
-Use keywords: "community engagement consultant RFP California", "strategic planning consultant RFP California", "human-centered design consulting RFP", "equity assessment consultant RFP California", "capacity building training facilitation RFP California", "service design evaluation public sector", "stakeholder engagement consultant California", "co-design facilitation government RFP".
+Use keywords: "community engagement consultant RFP", "strategic planning consultant RFP", "human-centered design consulting RFP", "equity assessment consultant RFP".
 
-Return 8–10 best matches as a JSON array. Each object must have exactly:
+Return 6–8 best matches as a JSON array. Each object must have exactly:
 {
   "id": "unique-slug",
   "title": "full title as listed",
@@ -491,80 +522,116 @@ Return 8–10 best matches as a JSON array. Each object must have exactly:
   "deadline": "deadline as listed or null",
   "description": "2-3 sentence scope summary",
   "relevanceScore": <integer 1-10>,
-  "relevanceReason": "1-2 sentences on why this fits CivicMakers specifically",
+  "relevanceReason": "1-2 sentences on why this fits CivicMakers",
   "serviceArea": "Service Design & Evaluation | Strategic Planning | Community & Stakeholder Engagement | Training & Capacity Building",
   "budget": "budget if stated or null",
   "postedDate": "date posted or null",
   "source": "portal name"
 }
 
-FINAL output: ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and end with ].`;
+ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and end with ].`;
+
+    const gapFillPromise = fetch("/.netlify/functions/discover", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt: gapFillPrompt }),
+    });
 
     try {
-      const res = await fetch("/.netlify/functions/discover", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
-      });
+      // Wait for API results first (fast, ~2-3s)
+      const apiResults = await Promise.all(apiPromises);
+      const rawApiOpps = apiResults.flatMap(r => r.results || []);
 
-      if (!res.ok) {
-        const body = await res.text();
-        throw new Error(`API error ${res.status}: ${body}`);
+      if (rawApiOpps.length > 0) {
+        // Show unscored API results immediately (with placeholder scores)
+        const quickResults = rawApiOpps.map((r, i) => ({
+          ...r,
+          id: r.id || `api-${Date.now()}-${i}`,
+          discoveredAt: now,
+          isManual: false,
+          relevanceScore: r.relevanceScore ?? 5,
+          relevanceReason: r.relevanceReason ?? "Scoring in progress…",
+          serviceArea: r.serviceArea ?? "Community & Stakeholder Engagement",
+        }));
+
+        setResults(prev => {
+          const merged = mergeResults(quickResults, prev);
+          saveLocal(STORAGE_KEYS.results, merged);
+          return merged;
+        });
+
+        // ── Phase 3: Score API results with LLM (no web_search, ~5s) ──
+        fetch("/.netlify/functions/score", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ opportunities: rawApiOpps }),
+        })
+          .then(r => r.ok ? r.json() : { scored: [] })
+          .then(data => {
+            if (!data.scored?.length) return;
+            const scored = data.scored.map((r, i) => ({
+              ...r,
+              id: r.id || `api-scored-${Date.now()}-${i}`,
+              discoveredAt: now,
+              isManual: false,
+            }));
+            setResults(prev => {
+              // Replace unscored versions with scored ones
+              const withoutOld = prev.filter(p => !scored.some(s => s.id === p.id));
+              const merged = [...scored, ...withoutOld];
+              saveLocal(STORAGE_KEYS.results, merged);
+              return merged;
+            });
+          })
+          .catch(err => console.error("Scoring error:", err));
       }
 
-      // Read NDJSON stream — server sends status/ping/result/error lines
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = "";
-      let text = "";
+      // Wait for LLM gap-fill results (slower, ~20-30s)
+      const gapFillRes = await gapFillPromise;
+      if (gapFillRes.ok) {
+        const reader = gapFillRes.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+        let text = "";
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        const lines = buf.split("\n");
-        buf = lines.pop();
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          try {
-            const msg = JSON.parse(line);
-            if (msg.type === "error") throw new Error(msg.message);
-            if (msg.type === "result") text = msg.text;
-          } catch (e) {
-            if (e.message && !e.message.startsWith("Unexpected")) throw e;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          const lines = buf.split("\n");
+          buf = lines.pop();
+          for (const line of lines) {
+            if (!line.trim()) continue;
+            try {
+              const msg = JSON.parse(line);
+              if (msg.type === "error") throw new Error(msg.message);
+              if (msg.type === "result") text = msg.text;
+            } catch (e) {
+              if (e.message && !e.message.startsWith("Unexpected")) throw e;
+            }
+          }
+        }
+
+        if (text) {
+          const rfps = parseRfpJson(text);
+          if (rfps) {
+            const enriched = rfps.map((r, i) => ({
+              ...r,
+              id: r.id || `llm-${Date.now()}-${i}`,
+              discoveredAt: now,
+              isManual: false,
+            }));
+            setResults(prev => {
+              const merged = mergeResults(enriched, prev);
+              saveLocal(STORAGE_KEYS.results, merged);
+              return merged;
+            });
           }
         }
       }
 
-      if (!text) throw new Error("No result received from discovery");
-      let rfps;
-      const strict = text.match(/\[\s*\{[\s\S]*\}\s*\]/);
-      if (strict) {
-        rfps = JSON.parse(strict[0]);
-      } else {
-        const start = text.indexOf("[");
-        const end   = text.lastIndexOf("]");
-        if (start === -1 || end === -1) throw new Error("No JSON array in response. Check browser console for raw output.");
-        rfps = JSON.parse(text.slice(start, end + 1));
-      }
-
-      const now = new Date().toISOString();
-      const enriched = rfps.map((r, i) => ({
-        ...r,
-        id: r.id || `rfp-${Date.now()}-${i}`,
-        discoveredAt: now,
-        isManual: false,
-      }));
-
-      // Merge & deduplicate by URL
-      const existingUrls = new Set(results.map(r => r.url).filter(Boolean));
-      const fresh = enriched.filter(r => !r.url || !existingUrls.has(r.url));
-      const merged = [...fresh, ...results];
-
-      setResults(merged);
       setLastRun(now);
-      saveLocal(STORAGE_KEYS.results,  merged);
-      saveLocal(STORAGE_KEYS.lastRun,  now);
+      saveLocal(STORAGE_KEYS.lastRun, now);
 
     } catch (e) {
       console.error("Discovery error:", e);
@@ -679,7 +746,8 @@ FINAL output: ONLY the raw JSON array. No markdown fences, no explanation. Start
             {discovering && (
               <div style={{ textAlign: "center", padding: "50px 0" }}>
                 <div style={{ fontSize: 14, color: "#475569", marginBottom: 5 }}>Searching California procurement portals…</div>
-                <div style={{ fontSize: 12, color: "#94A3B8" }}>Live web search · usually 20–40 seconds</div>
+                <div style={{ fontSize: 12, color: "#94A3B8" }}>Direct APIs (~3s) → LLM scoring (~5s) → Gap-fill search (~20s)</div>
+                {results.length > 0 && <div style={{ fontSize: 12, color: "#3B82F6", marginTop: 6 }}>{results.length} results so far — still searching…</div>}
               </div>
             )}
 
