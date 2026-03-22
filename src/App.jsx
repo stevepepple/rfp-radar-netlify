@@ -463,7 +463,7 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
         )}
 
         {/* ── SOURCES tab ── */}
-        {tab === "sources" && <SourcesTab />}
+        {tab === "sources" && <SourcesTab results={results} />}
       </div>
 
       {showManual && <ManualEntryModal onSave={saveManual} onClose={() => setShowManual(false)} />}
