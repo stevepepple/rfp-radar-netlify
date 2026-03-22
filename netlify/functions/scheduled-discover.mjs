@@ -254,6 +254,8 @@ async function fetchExternalScraper() {
     "https://hbex.coveredca.com/solicitations/",
     "https://sgc.ca.gov",
     "https://www.csuchico.edu/pcs/current-bids.shtml",
+    "https://www.ucop.edu/for-suppliers",
+    "https://foundationccc.org/CollegeBuys",
     "https://www.calfund.org/nonprofits/open-grants/",
     "https://www.calendow.org/opportunities/",
     "https://sff.org/nonprofits/",
@@ -281,6 +283,12 @@ async function fetchExternalScraper() {
     "https://lacounty.gov/government/opportunities/",
     "https://www.sandiegocounty.gov/content/sdc/purchasing/solicitations.html",
     "https://www.fresnocountyca.gov/Departments/Internal-Services/Purchasing/Bids",
+    "https://cpo.oc.gov",
+    "https://www.solanocounty.gov",
+    "https://www.fostercity.org",
+    "https://www.coronado.ca.us",
+    "https://www.cityofdavis.org",
+    "https://www.glendaleca.gov",
   ];
 
   try {

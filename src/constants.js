@@ -54,6 +54,8 @@ export const SOURCES = [
   { name: "LA County",                     url: "https://lacounty.gov/government/opportunities/",       tier: "Watch",        type: "County" },
   { name: "San Diego County",              url: "https://www.sandiegocounty.gov",                       tier: "Watch",        type: "County" },
   { name: "Fresno County",                 url: "https://www.fresnocountyca.gov",                       tier: "Watch",        type: "County" },
+  { name: "Orange County Procurement",     url: "https://cpo.oc.gov",                                   tier: "Watch",        type: "County" },
+  { name: "Solano County",                 url: "https://www.solanocounty.gov",                         tier: "Watch",        type: "County" },
   // ── Special Districts ──
   { name: "Orange County Water District",  url: "https://www.ocwd.com/about/rfp-contracts/",            tier: "Watch",        type: "Special District" },
   { name: "MWDOC",                         url: "https://www.mwdoc.com/about-mwdoc/rfps-rfqs/",         tier: "Watch",        type: "Special District" },
@@ -67,10 +69,16 @@ export const SOURCES = [
   { name: "City of Berkeley",              url: "https://www.cityofberkeley.info",                      tier: "Watch",        type: "City" },
   { name: "City of Sacramento",            url: "https://www.cityofsacramento.org",                     tier: "Watch",        type: "City" },
   { name: "SF Dept of Public Health",      url: "https://www.sfdph.org",                                tier: "Watch",        type: "City" },
+  { name: "City of Foster City",           url: "https://www.fostercity.org",                           tier: "Watch",        type: "City" },
+  { name: "City of Coronado",              url: "https://www.coronado.ca.us",                           tier: "Watch",        type: "City" },
+  { name: "City of Davis",                 url: "https://www.cityofdavis.org",                          tier: "Watch",        type: "City" },
+  { name: "City of Glendale",              url: "https://www.glendaleca.gov",                           tier: "Watch",        type: "City" },
   // ── State agencies ──
   { name: "CalSAWS",                       url: "https://www.calsaws.org/procurement-listings/",        tier: "Watch",        type: "State Agency" },
   // ── Higher Ed ──
   { name: "Chico State Procurement",      url: "https://www.csuchico.edu/pcs/current-bids.shtml",      tier: "Watch",        type: "Higher Ed" },
+  { name: "UC System (UCOP)",              url: "https://www.ucop.edu/for-suppliers",                   tier: "Watch",        type: "Higher Ed" },
+  { name: "CollegeBuys (CCC)",             url: "https://foundationccc.org/CollegeBuys",                tier: "Watch",        type: "Higher Ed" },
   // ── Foundations ──
   { name: "California Community Foundation",url: "https://www.calfund.org/grants/",                    tier: "Supplement",   type: "Foundation" },
   { name: "The California Endowment",      url: "https://www.calendow.org",                             tier: "Supplement",   type: "Foundation" },

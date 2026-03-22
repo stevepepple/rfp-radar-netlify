@@ -161,8 +161,10 @@ Search for current California RFPs, RFQs, IFBs, and consulting solicitations on 
 - mwdoc.com/about-mwdoc/rfps-rfqs (Municipal Water District of Orange County)
 - hacla.org/procurement (Housing Authority of City of Los Angeles)
 - csuchico.edu/pcs/current-bids.shtml (Chico State)
-- Marin, San Mateo, Alameda, Santa Cruz, Sonoma county procurement pages
-- San Jose, Oakland, Sacramento city portals
+- ucop.edu/for-suppliers (University of California System)
+- foundationccc.org/CollegeBuys (California Community Colleges)
+- Marin, San Mateo, Alameda, Santa Cruz, Sonoma, Solano, Orange County procurement pages
+- San Jose, Oakland, Sacramento, Foster City, Coronado, Davis, Glendale city portals
 - sgc.ca.gov (Strategic Growth Council)
 - Foundation pages: calfund.org, calendow.org, sff.org
 
