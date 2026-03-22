@@ -8,14 +8,14 @@ import { getStore } from "@netlify/blobs";
 
 // Inline fetch helpers (can't import from other functions)
 async function fetchGrantsGov() {
-  const keywords = ["community engagement", "strategic planning", "capacity building"];
+  const keywords = ["community engagement", "strategic planning", "capacity building", "stakeholder engagement", "equity assessment", "program evaluation", "service design", "facilitation", "public participation"];
   const results = [];
   for (const keyword of keywords) {
     try {
       const res = await fetch("https://apply07.grants.gov/grantsws/rest/opportunities/search/", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ keyword, oppStatuses: "posted", rows: 10, sortBy: "openDate|desc" }),
+        body: JSON.stringify({ keyword, oppStatuses: "posted", rows: 20, sortBy: "openDate|desc" }),
       });
       if (!res.ok) continue;
       const data = await res.json();
@@ -35,12 +35,12 @@ async function fetchGrantsGov() {
     } catch { /* continue */ }
   }
   const seen = new Set();
-  return results.filter(r => { if (seen.has(r.id)) return false; seen.add(r.id); return true; }).slice(0, 10);
+  return results.filter(r => { if (seen.has(r.id)) return false; seen.add(r.id); return true; }).slice(0, 30);
 }
 
 async function fetchCaGrants() {
   try {
-    const url = `https://data.ca.gov/api/3/action/datastore_search?resource_id=111c8c88-21f6-453c-ae2c-b4785a0624f5&limit=20&sort=openDate desc`;
+    const url = `https://data.ca.gov/api/3/action/datastore_search?resource_id=111c8c88-21f6-453c-ae2c-b4785a0624f5&limit=50&sort=openDate desc`;
     const res = await fetch(url);
     if (!res.ok) return [];
     const data = await res.json();
@@ -61,7 +61,7 @@ async function fetchCaGrants() {
         budget: r.totalEstimatedFunding ? `$${Number(r.totalEstimatedFunding).toLocaleString()}` : null,
         source: "CA Grants Portal",
       }))
-      .slice(0, 10);
+      .slice(0, 25);
   } catch { return []; }
 }
 
@@ -74,14 +74,14 @@ async function fetchSamGov() {
     const fmt = (d) => `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}/${d.getFullYear()}`;
     const params = new URLSearchParams({
       api_key: apiKey, postedFrom: fmt(ago), postedTo: fmt(now),
-      ptype: "p,r,s,o,k", state: "CA", limit: "20",
+      ptype: "p,r,s,o,k", state: "CA", limit: "50",
     });
     const res = await fetch(`https://api.sam.gov/opportunities/v2/search?${params}`);
     if (!res.ok) return [];
     const data = await res.json();
-    const kws = ["engagement", "planning", "design", "equity", "training", "capacity", "consulting", "community"];
+    const kws = ["engagement", "planning", "design", "equity", "training", "capacity", "consulting", "community", "facilitation", "evaluation", "stakeholder", "outreach", "assessment", "strategy", "technical assistance"];
     return (data.opportunitiesData || [])
-      .filter(o => { const t = `${o.title || ""}`.toLowerCase(); return kws.some(k => t.includes(k)); })
+      .filter(o => { const t = `${o.title || ""} ${o.description || ""}`.toLowerCase(); return kws.some(k => t.includes(k)); })
       .map(o => ({
         id: `sam-gov-${o.noticeId}`,
         title: o.title || "Untitled",
@@ -93,8 +93,140 @@ async function fetchSamGov() {
         budget: null,
         source: "SAM.gov",
       }))
-      .slice(0, 10);
+      .slice(0, 25);
   } catch { return []; }
+}
+
+async function fetchUSAspending() {
+  try {
+    const naicsCodes = [
+      "541611", "541612", "541618", "541620", "541690",
+      "541720", "541910", "611430", "541199",
+    ];
+    const now = new Date();
+    const sixtyDaysAgo = new Date(now - 60 * 24 * 60 * 60 * 1000);
+    const fmt = (d) => d.toISOString().slice(0, 10);
+
+    const body = {
+      filters: {
+        time_period: [{ start_date: fmt(sixtyDaysAgo), end_date: fmt(now) }],
+        place_of_performance_locations: [{ country: "USA", state: "CA" }],
+        naics_codes: naicsCodes,
+        award_type_codes: ["A", "B", "C", "D"],
+      },
+      fields: [
+        "Award ID", "Recipient Name", "Description", "Award Amount",
+        "Awarding Agency", "Awarding Sub Agency", "Start Date", "End Date",
+        "generated_internal_id",
+      ],
+      page: 1, limit: 50, sort: "Start Date", order: "desc",
+    };
+
+    const res = await fetch("https://api.usaspending.gov/api/v2/search/spending_by_award/", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) return [];
+
+    const data = await res.json();
+    const kws = ["engagement", "planning", "facilitation", "design", "evaluation", "equity", "outreach", "training", "capacity", "stakeholder", "consulting", "community", "assessment", "strategy", "technical assistance"];
+
+    const results = [];
+    for (const a of (data.results || [])) {
+      const desc = (a["Description"] || "").toLowerCase();
+      if (!kws.some(k => desc.includes(k))) continue;
+      const iid = a["generated_internal_id"] || "";
+      results.push({
+        id: `usaspending-${a["Award ID"] || iid}`,
+        title: (a["Description"] || "Untitled").slice(0, 200),
+        agency: a["Awarding Sub Agency"] || a["Awarding Agency"] || "Federal Agency",
+        url: iid ? `https://www.usaspending.gov/award/${iid}` : "https://www.usaspending.gov",
+        deadline: a["End Date"] || null,
+        description: (a["Description"] || "See USAspending.gov for details.").slice(0, 300),
+        postedDate: a["Start Date"] || null,
+        budget: a["Award Amount"] ? `$${Number(a["Award Amount"]).toLocaleString()}` : null,
+        source: "USAspending.gov",
+      });
+    }
+    const seen = new Set();
+    return results.filter(r => { if (seen.has(r.id)) return false; seen.add(r.id); return true; }).slice(0, 25);
+  } catch (err) { console.error("USAspending error:", err); return []; }
+}
+
+async function fetchSBIR() {
+  try {
+    const res = await fetch("https://www.sbir.gov/api/solicitations.json?keyword=community+engagement+planning+evaluation&open=1&rows=30");
+    if (!res.ok) return [];
+    const data = await res.json();
+    const solicitations = Array.isArray(data) ? data : (data.results || data.solicitations || []);
+
+    const kws = ["engagement", "planning", "design", "evaluation", "equity", "community", "training", "capacity", "stakeholder", "outreach", "facilitation", "social"];
+    const results = [];
+    for (const sol of solicitations) {
+      const title = sol.solicitation_title || sol.title || "";
+      const desc = sol.description || sol.abstract || "";
+      const text = `${title} ${desc}`.toLowerCase();
+      if (!kws.some(k => text.includes(k))) continue;
+      results.push({
+        id: `sbir-${sol.solicitation_id || sol.topic_number || sol.id || Date.now()}`,
+        title: title || "Untitled SBIR Solicitation",
+        agency: sol.agency || sol.branch || "Federal Agency (SBIR)",
+        url: sol.solicitation_url || sol.url || `https://www.sbir.gov/node/${sol.id || ""}`,
+        deadline: sol.close_date || sol.deadline || null,
+        description: (desc || "See SBIR.gov for details.").replace(/<[^>]*>/g, "").slice(0, 300),
+        postedDate: sol.open_date || sol.release_date || null,
+        budget: sol.award_ceiling ? `$${Number(sol.award_ceiling).toLocaleString()}`
+          : sol.phase === "Phase I" ? "Up to $275,000" : sol.phase === "Phase II" ? "Up to $1,000,000" : null,
+        source: "SBIR.gov",
+      });
+    }
+    const seen = new Set();
+    return results.filter(r => { if (seen.has(r.id)) return false; seen.add(r.id); return true; }).slice(0, 15);
+  } catch (err) { console.error("SBIR error:", err); return []; }
+}
+
+async function fetchNSF() {
+  try {
+    const keywords = ["community engagement", "stakeholder engagement", "capacity building"];
+    const now = new Date();
+    const sixMonthsAgo = new Date(now - 180 * 24 * 60 * 60 * 1000);
+    const fmtD = (d) => `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}/${d.getFullYear()}`;
+    const results = [];
+
+    for (const keyword of keywords) {
+      try {
+        const params = new URLSearchParams({
+          keyword, dateStart: fmtD(sixMonthsAgo), dateEnd: fmtD(now),
+          printFields: "id,title,agency,fundsObligatedAmt,startDate,expDate,abstractText,fundProgramName,perfStateCode",
+          offset: "1", rpp: "15",
+        });
+        const res = await fetch(`https://api.nsf.gov/services/v1/awards.json?${params}`);
+        if (!res.ok) continue;
+        const data = await res.json();
+        for (const award of (data.response?.award || [])) {
+          const perfState = award.perfStateCode || "";
+          const text = `${award.title || ""} ${award.abstractText || ""}`.toLowerCase();
+          const isCA = perfState === "CA" || text.includes("california");
+          const isNational = text.includes("national") || text.includes("nationwide");
+          if (!isCA && !isNational && perfState) continue;
+          results.push({
+            id: `nsf-${award.id}`,
+            title: award.title || "Untitled NSF Award",
+            agency: `NSF — ${award.fundProgramName || "Research Program"}`,
+            url: `https://www.nsf.gov/awardsearch/showAward?AWD_ID=${award.id}`,
+            deadline: award.expDate || null,
+            description: (award.abstractText || "See NSF.gov for details.").replace(/<[^>]*>/g, "").slice(0, 300),
+            postedDate: award.startDate || null,
+            budget: award.fundsObligatedAmt ? `$${Number(award.fundsObligatedAmt).toLocaleString()}` : null,
+            source: "NSF",
+          });
+        }
+      } catch { /* continue */ }
+    }
+    const seen = new Set();
+    return results.filter(r => { if (seen.has(r.id)) return false; seen.add(r.id); return true; }).slice(0, 20);
+  } catch (err) { console.error("NSF error:", err); return []; }
 }
 
 async function fetchExternalScraper() {
@@ -126,7 +258,26 @@ async function fetchExternalScraper() {
     "https://www.ca-ilg.org/rfps",
     "https://www.bidnetdirect.com/california",
     "https://www.publicpurchase.com",
-    "https://www.bidsync.com"
+    "https://www.bidsync.com",
+    "https://www.sfmta.com/doing-business-with-sfmta/contracts-and-bids",
+    "https://business.metro.net/ebidboard",
+    "https://www.smctd.com/doing-business/procurement/bids-and-contracts",
+    "https://www.vta.org/business-center/procurement/doing-business-vta",
+    "https://www.sandag.org/doing-business/contracting-opportunities",
+    "https://www.alamedactc.org/doing-business/contracting-opportunities",
+    // Additional sources for broader coverage
+    "https://www.demandstar.com/app/browse-bids/states/california",
+    "https://www.calsaws.org/procurement-listings/",
+    "https://cleanpoweralliance.org/contracting-opportunities/",
+    "https://www.sccgov.org/sites/scc/Pages/Doing-Business-with-the-County.aspx",
+    "https://www.acgov.org/gsa/purchasing/bid_content/contractopportunities.jsp",
+    "https://www.contracosta.ca.gov/6495/Bids-Proposals",
+    "https://www.cityofberkeley.info/Finance/Purchasing/Bids_Current_and_Awarded.aspx",
+    "https://www.cityofsacramento.org/Finance/Procurement/Bids-and-Contracts",
+    "https://www.sfdph.org/dph/comupg/aboutdph/insideDept/ofcContracting/RFPs.asp",
+    "https://lacounty.gov/government/opportunities/",
+    "https://www.sandiegocounty.gov/content/sdc/purchasing/solicitations.html",
+    "https://www.fresnocountyca.gov/Departments/Internal-Services/Purchasing/Bids",
   ];
 
   try {
@@ -180,14 +331,17 @@ export default async () => {
 
   try {
     // Fetch from all direct APIs in parallel
-    const [grantsGov, caGrants, samGov, externalScraped] = await Promise.all([
+    const [grantsGov, caGrants, samGov, usaSpending, sbir, nsf, externalScraped] = await Promise.all([
       fetchGrantsGov(),
       fetchCaGrants(),
       fetchSamGov(),
+      fetchUSAspending(),
+      fetchSBIR(),
+      fetchNSF(),
       fetchExternalScraper()
     ]);
 
-    const allResults = [...grantsGov, ...caGrants, ...samGov, ...externalScraped];
+    const allResults = [...grantsGov, ...caGrants, ...samGov, ...usaSpending, ...sbir, ...nsf, ...externalScraped];
     console.log(`Scheduled: fetched ${allResults.length} raw opportunities from APIs & scraper`);
 
     // Score with LLM if available (fast, no web_search)

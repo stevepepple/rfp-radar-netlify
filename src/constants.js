@@ -20,10 +20,14 @@ export const SERVICES = [
 ];
 
 export const SOURCES = [
-  // ── Direct API sources ──
+  // ── Direct API sources (Federal) ──
   { name: "grants.gov",                    url: "https://www.grants.gov",                               tier: "Primary",      type: "Federal" },
-  { name: "California Grants Portal",      url: "https://www.grants.ca.gov",                            tier: "Primary",      type: "State" },
   { name: "SAM.gov",                       url: "https://sam.gov",                                      tier: "Primary",      type: "Federal" },
+  { name: "USAspending.gov",               url: "https://www.usaspending.gov",                          tier: "Primary",      type: "Federal" },
+  { name: "SBIR.gov",                      url: "https://www.sbir.gov",                                 tier: "Primary",      type: "Federal" },
+  { name: "NSF Awards",                    url: "https://www.nsf.gov/awardsearch/",                     tier: "Primary",      type: "Federal" },
+  // ── Direct API sources (State) ──
+  { name: "California Grants Portal",      url: "https://www.grants.ca.gov",                            tier: "Primary",      type: "State" },
   // ── State portals ──
   { name: "Cal eProcure / CSCR",          url: "https://caleprocure.ca.gov",                            tier: "Primary",      type: "State" },
   { name: "OpenGov Procurement",           url: "https://procurement.opengov.com",                      tier: "Primary",      type: "Local Gov" },
@@ -31,6 +35,12 @@ export const SOURCES = [
   // ── Transit & regional ──
   { name: "BART Procurement",             url: "https://www.bart.gov/about/business/procurement",       tier: "Watch",        type: "Transit" },
   { name: "ABAG / MTC",                    url: "https://mtc.ca.gov/about-mtc/careers-and-contracting", tier: "Watch",        type: "Regional" },
+  { name: "LA Metro",                      url: "https://business.metro.net/ebidboard",                 tier: "Watch",        type: "Transit" },
+  { name: "SFMTA",                         url: "https://www.sfmta.com/doing-business-with-sfmta",      tier: "Watch",        type: "Transit" },
+  { name: "Caltrain / SamTrans",           url: "https://www.smctd.com",                                tier: "Watch",        type: "Transit" },
+  { name: "VTA",                           url: "https://www.vta.org",                                  tier: "Watch",        type: "Transit" },
+  { name: "SANDAG",                        url: "https://www.sandag.org",                               tier: "Watch",        type: "Transit" },
+  { name: "Alameda CTC",                   url: "https://www.alamedactc.org",                           tier: "Watch",        type: "Transit" },
   // ── City portals ──
   { name: "SF OEWD Bid Opportunities",    url: "https://sf.gov/information/bid-opportunities",          tier: "Watch",        type: "City" },
   { name: "City of San Jose",              url: "https://www.sanjoseca.gov/doing-business/bids-purchasing", tier: "Watch",   type: "City" },
@@ -38,13 +48,27 @@ export const SOURCES = [
   // ── County portals ──
   { name: "Marin County Contracting",      url: "https://www.marincounty.gov/contracting-opportunities",tier: "Watch",        type: "County" },
   { name: "San Mateo County",              url: "https://www.smcgov.org/ceo/request-proposals-rfp",     tier: "Watch",        type: "County" },
+  { name: "Santa Clara County",            url: "https://www.sccgov.org",                               tier: "Watch",        type: "County" },
+  { name: "Alameda County",                url: "https://www.acgov.org",                                tier: "Watch",        type: "County" },
+  { name: "Contra Costa County",           url: "https://www.contracosta.ca.gov",                       tier: "Watch",        type: "County" },
+  { name: "LA County",                     url: "https://lacounty.gov/government/opportunities/",       tier: "Watch",        type: "County" },
+  { name: "San Diego County",              url: "https://www.sandiegocounty.gov",                       tier: "Watch",        type: "County" },
+  { name: "Fresno County",                 url: "https://www.fresnocountyca.gov",                       tier: "Watch",        type: "County" },
+  // ── Special Districts ──
   { name: "Orange County Water District",  url: "https://www.ocwd.com/about/rfp-contracts/",            tier: "Watch",        type: "Special District" },
   { name: "MWDOC",                         url: "https://www.mwdoc.com/about-mwdoc/rfps-rfqs/",         tier: "Watch",        type: "Special District" },
+  { name: "Clean Power Alliance",          url: "https://cleanpoweralliance.org/contracting-opportunities/", tier: "Watch",   type: "Special District" },
   // ── Housing authorities ──
   { name: "HACLA Open Solicitations",      url: "https://www.hacla.org/procurement",                    tier: "Watch",        type: "Housing Authority" },
   // ── State agencies ──
   { name: "Covered California",            url: "https://hbex.coveredca.com/solicitations/",            tier: "Watch",        type: "State Agency" },
   { name: "Strategic Growth Council",      url: "https://sgc.ca.gov",                                   tier: "Watch",        type: "State Agency" },
+  // ── Additional City portals ──
+  { name: "City of Berkeley",              url: "https://www.cityofberkeley.info",                      tier: "Watch",        type: "City" },
+  { name: "City of Sacramento",            url: "https://www.cityofsacramento.org",                     tier: "Watch",        type: "City" },
+  { name: "SF Dept of Public Health",      url: "https://www.sfdph.org",                                tier: "Watch",        type: "City" },
+  // ── State agencies ──
+  { name: "CalSAWS",                       url: "https://www.calsaws.org/procurement-listings/",        tier: "Watch",        type: "State Agency" },
   // ── Higher Ed ──
   { name: "Chico State Procurement",      url: "https://www.csuchico.edu/pcs/current-bids.shtml",      tier: "Watch",        type: "Higher Ed" },
   // ── Foundations ──
@@ -53,6 +77,7 @@ export const SOURCES = [
   { name: "San Francisco Foundation",      url: "https://sff.org",                                      tier: "Supplement",   type: "Foundation" },
   // ── Aggregators & networks ──
   { name: "BidNet Direct CA",              url: "https://www.bidnetdirect.com/california",              tier: "Supplement",   type: "Aggregator" },
+  { name: "DemandStar",                    url: "https://www.demandstar.com/app/browse-bids/states/california", tier: "Supplement", type: "Aggregator" },
   { name: "HigherGov",                     url: "https://www.highergov.com",                            tier: "Supplement",   type: "Aggregator" },
   { name: "CA Workforce Association",      url: "https://www.calworkforce.org",                         tier: "Relationship", type: "Network" },
   { name: "ILG",                           url: "https://www.ca-ilg.org",                               tier: "Relationship", type: "Network" },

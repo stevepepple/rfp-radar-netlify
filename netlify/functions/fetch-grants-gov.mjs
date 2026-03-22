@@ -10,6 +10,9 @@ const KEYWORDS = [
   "capacity building",
   "service design",
   "equity assessment",
+  "program evaluation",
+  "facilitation",
+  "public participation",
 ];
 
 export default async (req) => {
@@ -25,11 +28,11 @@ export default async (req) => {
     const results = [];
 
     // Query a few keywords (grants.gov search2 API)
-    for (const keyword of KEYWORDS.slice(0, 4)) {
+    for (const keyword of KEYWORDS.slice(0, 6)) {
       const searchBody = {
         keyword: keyword,
         oppStatuses: "posted",
-        rows: 10,
+        rows: 20,
         sortBy: "openDate|desc",
       };
 
@@ -88,7 +91,7 @@ export default async (req) => {
       return true;
     });
 
-    return new Response(JSON.stringify({ results: unique.slice(0, 15) }), {
+    return new Response(JSON.stringify({ results: unique.slice(0, 30) }), {
       status: 200,
       headers: { "Content-Type": "application/json" },
     });

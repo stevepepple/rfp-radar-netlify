@@ -108,7 +108,7 @@ export default function App() {
       (!r.url || !existingUrls.has(r.url)) && !existingIds.has(r.id)
     );
     // Keep max latest 200 items to prevent localStorage quotas
-    return fresh.length > 0 ? [...fresh, ...prev].slice(0, 200) : prev;
+    return fresh.length > 0 ? [...fresh, ...prev].slice(0, 500) : prev;
   }
 
   async function discover(forceRefresh = false) {
@@ -126,6 +126,9 @@ export default function App() {
       "/.netlify/functions/fetch-grants-gov",
       "/.netlify/functions/fetch-ca-grants",
       "/.netlify/functions/fetch-sam-gov",
+      "/.netlify/functions/fetch-usaspending",
+      "/.netlify/functions/fetch-sbir",
+      "/.netlify/functions/fetch-nsf",
     ];
 
     const apiPromises = apiEndpoints.map(url =>
@@ -226,7 +229,7 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
             }));
             setResults(prev => {
               const withoutOld = prev.filter(p => !scored.some(s => s.id === p.id));
-              const merged = [...scored, ...withoutOld].slice(0, 200);
+              const merged = [...scored, ...withoutOld].slice(0, 500);
               saveLocal(STORAGE_KEYS.results, merged);
               return merged;
             });
@@ -395,7 +398,7 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
             {discovering && (
               <div style={{ textAlign: "center", padding: "50px 0" }}>
                 <div style={{ fontSize: 14, color: "#475569", marginBottom: 5 }}>Searching California procurement portals…</div>
-                <div style={{ fontSize: 12, color: "#94A3B8" }}>Querying grants.gov, CA Grants Portal, SAM.gov…</div>
+                <div style={{ fontSize: 12, color: "#94A3B8" }}>Querying grants.gov, CA Grants, SAM.gov, USAspending, SBIR, NSF…</div>
                 {results.length > 0 && <div style={{ fontSize: 12, color: "#ef525f", marginTop: 6 }}>{results.length} results so far — still searching…</div>}
               </div>
             )}
