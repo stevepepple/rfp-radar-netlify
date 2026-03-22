@@ -19,21 +19,23 @@ export default async (req) => {
       SELECT *
       FROM "${RESOURCE_ID}"
       WHERE (
-        "grantTitle" ILIKE '%community%'
-        OR "grantTitle" ILIKE '%engagement%'
-        OR "grantTitle" ILIKE '%planning%'
-        OR "grantTitle" ILIKE '%equity%'
-        OR "grantTitle" ILIKE '%design%'
-        OR "grantTitle" ILIKE '%training%'
-        OR "grantTitle" ILIKE '%capacity%'
-        OR "grantTitle" ILIKE '%evaluation%'
-        OR "grantTitle" ILIKE '%stakeholder%'
-        OR "description" ILIKE '%community engagement%'
-        OR "description" ILIKE '%strategic planning%'
-        OR "description" ILIKE '%capacity building%'
+        "Title" ILIKE '%community%'
+        OR "Title" ILIKE '%engagement%'
+        OR "Title" ILIKE '%planning%'
+        OR "Title" ILIKE '%equity%'
+        OR "Title" ILIKE '%design%'
+        OR "Title" ILIKE '%training%'
+        OR "Title" ILIKE '%capacity%'
+        OR "Title" ILIKE '%evaluation%'
+        OR "Title" ILIKE '%stakeholder%'
+        OR "Description" ILIKE '%community engagement%'
+        OR "Description" ILIKE '%strategic planning%'
+        OR "Description" ILIKE '%capacity building%'
+        OR "Purpose" ILIKE '%engagement%'
+        OR "Purpose" ILIKE '%planning%'
       )
-      AND "status" = 'Active'
-      ORDER BY "openDate" DESC
+      AND "Status" = 'active'
+      ORDER BY "OpenDate" DESC
       LIMIT 100
     `.trim();
 
@@ -81,25 +83,26 @@ function normalizeRecords(records) {
   return records
     .filter(r => {
       // Filter for consulting/services relevant to CivicMakers
-      const text = `${r.grantTitle || ""} ${r.description || ""}`.toLowerCase();
-      const keywords = ["engagement", "planning", "design", "equity", "training", "capacity", "evaluation", "stakeholder", "community", "facilitation"];
+      const title = r.Title || r.grantTitle || "";
+      const desc = r.Description || r.description || "";
+      const purpose = r.Purpose || "";
+      const text = `${title} ${desc} ${purpose}`.toLowerCase();
+      const keywords = ["engagement", "planning", "design", "equity", "training", "capacity", "evaluation", "stakeholder", "community", "facilitation", "outreach"];
       return keywords.some(kw => text.includes(kw));
     })
     .map((r, i) => ({
-      id: `ca-grants-${r._id || r.grantTitle?.slice(0, 30).replace(/\s+/g, "-") || `unknown-${i}`}`,
-      title: r.grantTitle || "Untitled",
-      agency: r.grantorName || r.agencyName || "California State Agency",
-      url: r.applicationLink || r.grantLink || null,
-      deadline: r.closeDate || r.deadline || null,
-      description: r.description
-        ? r.description.replace(/<[^>]*>/g, "").slice(0, 300)
+      id: `ca-grants-${r._id || r.PortalID || (r.Title || r.grantTitle || "").slice(0, 30).replace(/\s+/g, "-") || `unknown-${i}`}`,
+      title: r.Title || r.grantTitle || "Untitled",
+      agency: r.AgencyDept || r.grantorName || r.agencyName || "California State Agency",
+      url: r.GrantURL || r.AgencyURL || r.applicationLink || r.grantLink || null,
+      deadline: r.ApplicationDeadline || r.closeDate || r.deadline || null,
+      description: (r.Description || r.description)
+        ? (r.Description || r.description).replace(/<[^>]*>/g, "").slice(0, 300)
         : "See grants.ca.gov for full details.",
-      postedDate: r.openDate || null,
-      budget: r.totalEstimatedFunding
-        ? `$${Number(r.totalEstimatedFunding).toLocaleString()}`
-        : r.awardAmountMax
-          ? `Up to $${Number(r.awardAmountMax).toLocaleString()}`
-          : null,
+      postedDate: r.OpenDate || r.openDate || null,
+      budget: r.EstAvailFunds
+        || (r.totalEstimatedFunding ? `$${Number(r.totalEstimatedFunding).toLocaleString()}` : null)
+        || (r.awardAmountMax ? `Up to $${Number(r.awardAmountMax).toLocaleString()}` : null),
       source: "CA Grants Portal",
       relevanceScore: null,
       relevanceReason: null,

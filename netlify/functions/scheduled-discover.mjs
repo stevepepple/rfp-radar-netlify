@@ -44,21 +44,24 @@ async function fetchCaGrants() {
     const res = await fetch(url);
     if (!res.ok) return [];
     const data = await res.json();
-    const keywords = ["engagement", "planning", "design", "equity", "training", "capacity", "community"];
+    const keywords = ["engagement", "planning", "design", "equity", "training", "capacity", "community", "evaluation", "stakeholder", "facilitation", "outreach"];
     return (data.result?.records || [])
       .filter(r => {
-        const text = `${r.grantTitle || ""} ${r.description || ""}`.toLowerCase();
+        const title = r.Title || r.grantTitle || "";
+        const desc = r.Description || r.description || "";
+        const purpose = r.Purpose || "";
+        const text = `${title} ${desc} ${purpose}`.toLowerCase();
         return keywords.some(kw => text.includes(kw));
       })
       .map((r, i) => ({
-        id: `ca-grants-${r._id || r.grantTitle?.replace(/\s+/g, "-").slice(0, 40) || `unknown-${i}`}`,
-        title: r.grantTitle || "Untitled",
-        agency: r.grantorName || "California State Agency",
-        url: r.applicationLink || null,
-        deadline: r.closeDate || null,
-        description: (r.description || "").replace(/<[^>]*>/g, "").slice(0, 300),
-        postedDate: r.openDate || null,
-        budget: r.totalEstimatedFunding ? `$${Number(r.totalEstimatedFunding).toLocaleString()}` : null,
+        id: `ca-grants-${r._id || r.PortalID || (r.Title || r.grantTitle || "").replace(/\s+/g, "-").slice(0, 40) || `unknown-${i}`}`,
+        title: r.Title || r.grantTitle || "Untitled",
+        agency: r.AgencyDept || r.grantorName || "California State Agency",
+        url: r.GrantURL || r.AgencyURL || r.applicationLink || null,
+        deadline: r.ApplicationDeadline || r.closeDate || null,
+        description: (r.Description || r.description || "").replace(/<[^>]*>/g, "").slice(0, 300),
+        postedDate: r.OpenDate || r.openDate || null,
+        budget: r.EstAvailFunds || (r.totalEstimatedFunding ? `$${Number(r.totalEstimatedFunding).toLocaleString()}` : null),
         source: "CA Grants Portal",
       }))
       .slice(0, 25);
