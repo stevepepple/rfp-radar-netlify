@@ -11,7 +11,7 @@ export function PipelineCard({ rfp, expanded, onToggle, onStatusChange, onNotesC
 
   return (
     <div style={{ background: "#FFF", border: `1px solid ${urgent ? "#FCD34D" : past ? "#FCA5A5" : "#E2E8F0"}`, borderRadius: 12, marginBottom: 8, overflow: "hidden" }}>
-      <div onClick={onToggle} style={{ padding: "13px 15px", display: "flex", gap: 11, alignItems: "flex-start", cursor: "pointer" }}>
+      <div role="button" tabIndex={0} onClick={onToggle} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle(); } }} style={{ padding: "13px 15px", display: "flex", gap: 11, alignItems: "flex-start", cursor: "pointer" }}>
         <Score score={rfp.relevanceScore || 5} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 600, color: "#103b51", lineHeight: 1.35, marginBottom: 3 }}>{rfp.title}</div>

@@ -98,8 +98,8 @@ async function fetchSamGov() {
 }
 
 async function fetchExternalScraper() {
-  const scraperUrl = process.env.EXTERNAL_SCRAPER_URL || "https://api.vibemap.com/scrape";
-  const apiKey = process.env.SCRAPE_API_KEY;
+  const scraperUrl = process.env.EXTERNAL_SCRAPER_URL || "https://api.vibemap.com/v0.3/scrape";
+  const apiKey = process.env.SCRAPE_API_KEY || "Jk95FHNt.ODSi0b0lgiVz7jCvHqEqO6D0zJOZSoGU";
   if (!apiKey) return [];
 
   const targetUrls = [
@@ -118,7 +118,15 @@ async function fetchExternalScraper() {
     "https://www.hacla.org/procurement",
     "https://hbex.coveredca.com/solicitations/",
     "https://sgc.ca.gov",
-    "https://www.csuchico.edu/pcs/current-bids.shtml"
+    "https://www.csuchico.edu/pcs/current-bids.shtml",
+    "https://www.calfund.org/nonprofits/open-grants/",
+    "https://www.calendow.org/opportunities/",
+    "https://sff.org/nonprofits/",
+    "https://calworkforce.org/rfps/",
+    "https://www.ca-ilg.org/rfps",
+    "https://www.bidnetdirect.com/california",
+    "https://www.publicpurchase.com",
+    "https://www.bidsync.com"
   ];
 
   try {
@@ -126,7 +134,7 @@ async function fetchExternalScraper() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-API-Key": apiKey
+        "Authorization": "Api-Key " + apiKey
       },
       body: JSON.stringify({
         urls: targetUrls,
@@ -180,7 +188,7 @@ export default async () => {
     ]);
 
     const allResults = [...grantsGov, ...caGrants, ...samGov, ...externalScraped];
-    console.log(`Scheduled: fetched ${allResults.length} raw opportunities from APIs`);
+    console.log(`Scheduled: fetched ${allResults.length} raw opportunities from APIs & scraper`);
 
     // Score with LLM if available (fast, no web_search)
     let finalResults = allResults;

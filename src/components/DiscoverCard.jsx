@@ -10,7 +10,7 @@ export function DiscoverCard({ rfp, expanded, onToggle, inPipeline, onAdd }) {
 
   return (
     <div style={{ background: "#FFF", border: "1px solid #E2E8F0", borderRadius: 12, marginBottom: 8, overflow: "hidden", boxShadow: expanded ? "0 4px 14px rgba(0,0,0,.07)" : "none", transition: "box-shadow .2s" }}>
-      <div onClick={onToggle} style={{ padding: "13px 15px", display: "flex", gap: 11, alignItems: "flex-start", cursor: "pointer", background: expanded ? "#FAFBFD" : "#FFF" }}>
+      <div role="button" tabIndex={0} onClick={onToggle} onKeyDown={e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle(); } }} style={{ padding: "13px 15px", display: "flex", gap: 11, alignItems: "flex-start", cursor: "pointer", background: expanded ? "#FAFBFD" : "#FFF" }}>
         <Score score={rfp.relevanceScore || 5} />
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ fontSize: 14, fontWeight: 600, color: "#103b51", lineHeight: 1.35, marginBottom: 3 }}>{rfp.title}</div>

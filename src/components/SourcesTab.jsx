@@ -2,21 +2,38 @@ import React from 'react';
 import { Chip } from './Chip';
 import { SOURCES, TIER_STYLE } from '../constants';
 
-export function SourcesTab() {
+export function SourcesTab({ results = [] }) {
   return (
     <div>
       <p style={{ fontSize: 12, color: "#94A3B8", margin: "0 0 12px" }}>{SOURCES.length} monitored sources</p>
       {SOURCES.map(s => {
         const t = TIER_STYLE[s.tier] || { bg: "#F3F4F6", fg: "#475569" };
+        
+        const hostname = s.url ? new URL(s.url).hostname.replace(/^www\./, '') : "";
+        const count = results.filter(r => {
+          if (!r.source) return false;
+          if (s.name === "California Grants Portal" && r.source === "CA Grants Portal") return true;
+          if (r.source === s.name) return true;
+          if (hostname && r.source.includes(hostname)) return true;
+          return false;
+        }).length;
+
         return (
-          <div key={s.name} style={{ display: "flex", gap: 10, padding: "10px 0", borderBottom: "1px solid #F1F5F9", alignItems: "flex-start" }}>
-            <Chip label={s.tier} bg={t.bg} fg={t.fg} />
-            <div style={{ flex: 1 }}>
-              <div style={{ display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap" }}>
-                <a href={s.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, fontWeight: 600, color: "#103b51", textDecoration: "none" }}>{s.name}</a>
-                <span style={{ fontSize: 11, color: "#94A3B8" }}>{s.type}</span>
+          <div key={s.name} style={{ display: "flex", gap: 10, padding: "10px 0", borderBottom: "1px solid #F1F5F9", alignItems: "flex-start", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <Chip label={s.tier} bg={t.bg} fg={t.fg} />
+              <div style={{ flex: 1 }}>
+                <div style={{ display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap" }}>
+                  <a href={s.url} target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, fontWeight: 600, color: "#103b51", textDecoration: "none" }}>{s.name}</a>
+                  <span style={{ fontSize: 11, color: "#94A3B8" }}>{s.type}</span>
+                </div>
               </div>
             </div>
+            {count > 0 && (
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#ef525f", background: "#fde8ea", padding: "2px 8px", borderRadius: 12, whiteSpace: "nowrap" }}>
+                {count} {count === 1 ? "RFP" : "RFPs"}
+              </div>
+            )}
           </div>
         );
       })}

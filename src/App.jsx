@@ -22,8 +22,12 @@ export default function App() {
   const [showManual,    setShowManual]    = useState(false);
   const [searchQuery,   setSearchQuery]   = useState("");
   const discoverRef = useRef(null);
+  const didMountRef = useRef(false);
 
   useEffect(() => {
+    if (didMountRef.current) return;
+    didMountRef.current = true;
+
     const r = loadLocal(STORAGE_KEYS.results);  if (r) setResults(r);
     const p = loadLocal(STORAGE_KEYS.pipeline); if (p) setPipeline(p);
     const l = loadLocal(STORAGE_KEYS.lastRun);  if (l) setLastRun(l);
@@ -69,11 +73,8 @@ export default function App() {
         }));
 
         setResults(prev => {
-          const existingUrls = new Set(prev.map(r => r.url).filter(Boolean));
-          const fresh = enriched.filter(r => !r.url || !existingUrls.has(r.url));
-          if (fresh.length === 0) return prev;
-          // Keep max latest 200 items to prevent localStorage limits being hit
-          const merged = [...fresh, ...prev].slice(0, 200);
+          const merged = mergeResults(enriched, prev);
+          if (merged === prev) return prev;
           saveLocal(STORAGE_KEYS.results, merged);
           return merged;
         });
@@ -462,7 +463,7 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
         )}
 
         {/* ── SOURCES tab ── */}
-        {tab === "sources" && <SourcesTab />}
+        {tab === "sources" && <SourcesTab results={results} />}
       </div>
 
       {showManual && <ManualEntryModal onSave={saveManual} onClose={() => setShowManual(false)} />}

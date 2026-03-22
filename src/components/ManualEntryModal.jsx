@@ -16,15 +16,29 @@ export function ManualEntryModal({ onSave, onClose }) {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.45)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
-      <div style={{ background: "#FFF", borderRadius: 14, padding: "22px", width: "min(520px, 96vw)", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,.2)" }}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="manual-entry-modal-title"
+        style={{ background: "#FFF", borderRadius: 14, padding: "22px", width: "min(520px, 96vw)", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 20px 60px rgba(0,0,0,.2)" }}
+      >
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-          <span style={{ fontSize: 16, fontWeight: 700, color: "#103b51" }}>Add opportunity manually</span>
-          <button onClick={onClose} style={{ background: "none", border: "none", fontSize: 20, color: "#94A3B8", cursor: "pointer" }}>×</button>
+          <span id="manual-entry-modal-title" style={{ fontSize: 16, fontWeight: 700, color: "#103b51" }}>Add opportunity manually</span>
+          <button onClick={onClose} aria-label="Close dialog" style={{ background: "none", border: "none", fontSize: 20, color: "#94A3B8", cursor: "pointer" }}>×</button>
         </div>
-        {[["Title *","title","Full RFP/RFQ title"],["Agency *","agency","Issuing organization"],["URL","url","https://…"],["Deadline","deadline","e.g. April 15, 2026"],["Budget","budget","e.g. $50,000"]].map(([label, key, ph]) => (
+        {[["Title *","title","Full RFP/RFQ title"],["Agency *","agency","Issuing organization"],["URL","url","https://…"],["Deadline","deadline",""],["Budget","budget","e.g. $50,000"]].map(([label, key, ph]) => (
           <div key={key} style={{ marginBottom: 12 }}>
             <label style={lbl}>{label}</label>
-            <input value={form[key]} onChange={e => set(key, e.target.value)} placeholder={ph} style={inp} />
+            {key === "deadline" ? (
+              <input
+                type="date"
+                value={form.deadline || ""}
+                onChange={e => set("deadline", e.target.value)}
+                style={inp}
+              />
+            ) : (
+              <input value={form[key]} onChange={e => set(key, e.target.value)} placeholder={ph} style={inp} />
+            )}
           </div>
         ))}
         <div style={{ marginBottom: 12 }}>
