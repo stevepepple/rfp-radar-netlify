@@ -126,7 +126,7 @@ async function fetchExternalScraper() {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-API-Key": apiKey
+        "Authorization": "Api-Key " + apiKey
       },
       body: JSON.stringify({
         urls: targetUrls,
