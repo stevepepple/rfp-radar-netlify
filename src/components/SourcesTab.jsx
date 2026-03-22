@@ -29,11 +29,9 @@ export function SourcesTab({ results = [] }) {
                 </div>
               </div>
             </div>
-            {count > 0 && (
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#ef525f", background: "#fde8ea", padding: "2px 8px", borderRadius: 12, whiteSpace: "nowrap" }}>
-                {count} {count === 1 ? "RFP" : "RFPs"}
-              </div>
-            )}
+            <div style={{ fontSize: 12, fontWeight: 700, color: count > 0 ? "#ef525f" : "#94A3B8", background: count > 0 ? "#fde8ea" : "#F1F5F9", padding: "2px 8px", borderRadius: 12, whiteSpace: "nowrap" }}>
+              {count} {count === 1 ? "RFP" : "RFPs"}
+            </div>
           </div>
         );
       })}
