@@ -118,7 +118,15 @@ async function fetchExternalScraper() {
     "https://www.hacla.org/procurement",
     "https://hbex.coveredca.com/solicitations/",
     "https://sgc.ca.gov",
-    "https://www.csuchico.edu/pcs/current-bids.shtml"
+    "https://www.csuchico.edu/pcs/current-bids.shtml",
+    "https://www.calfund.org/nonprofits/open-grants/",
+    "https://www.calendow.org/opportunities/",
+    "https://sff.org/nonprofits/",
+    "https://calworkforce.org/rfps/",
+    "https://www.ca-ilg.org/rfps",
+    "https://www.bidnetdirect.com/california",
+    "https://www.publicpurchase.com",
+    "https://www.bidsync.com"
   ];
 
   try {
