@@ -6,6 +6,7 @@
 // Results are also cached to Netlify Blobs for prefetch.
 
 import { getStore } from "@netlify/blobs";
+import { PROFILES, DEFAULT_PROFILE, getDiscoveryPrompt } from "../../src/profiles.js";
 
 export default async (req, context) => {
   if (req.method !== "POST") {
@@ -23,9 +24,14 @@ export default async (req, context) => {
     );
   }
 
+  let profileId = DEFAULT_PROFILE;
   let prompt;
   try {
-    ({ prompt } = await req.json());
+    const body = await req.json();
+    profileId = body.profileId || DEFAULT_PROFILE;
+    // A caller may still pass an explicit prompt; otherwise build it from the
+    // profile config so frontend and function never diverge (src/profiles.js).
+    prompt = body.prompt || getDiscoveryPrompt(profileId);
   } catch {
     return new Response(JSON.stringify({ error: "Invalid JSON in request body." }), {
       status: 400,
@@ -33,12 +39,7 @@ export default async (req, context) => {
     });
   }
 
-  if (!prompt) {
-    return new Response(JSON.stringify({ error: "Missing prompt in request body." }), {
-      status: 400,
-      headers: { "Content-Type": "application/json" },
-    });
-  }
+  const profile = PROFILES[profileId] || PROFILES[DEFAULT_PROFILE];
 
   // Use a ReadableStream so data flows to the client continuously,
   // preventing the edge proxy from killing the connection for inactivity.
@@ -62,7 +63,7 @@ export default async (req, context) => {
             max_tokens: 4000,
             stream:     true,
             tools:      [{ type: "web_search_20250305", name: "web_search" }],
-            system:     "You are an expert RFP researcher for a California public sector consultancy. After all web searches, output ONLY a valid JSON array — no markdown fences, no explanation. Start with [ and end with ].",
+            system:     profile.systemPrompt,
             messages:   [{ role: "user", content: prompt }],
           }),
         });

@@ -99,9 +99,10 @@ export const TIER_STYLE = {
 };
 
 export const STORAGE_KEYS = {
-  results:  "cm_rfp_results_v2",
-  pipeline: "cm_rfp_pipeline_v2",
-  lastRun:  "cm_rfp_lastrun_v2",
+  results:       "cm_rfp_results_v2",
+  pipeline:      "cm_rfp_pipeline_v2",
+  lastRun:       "cm_rfp_lastrun_v2",
+  activeProfile: "cm_rfp_active_profile_v2",
 };
 
 export const CACHE_TTL_MS = 4 * 60 * 60 * 1000; // 4 hours

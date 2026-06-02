@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { STATUSES, STATUS_STYLE, SERVICES, STORAGE_KEYS } from './constants';
+import { STATUSES, STATUS_STYLE, STORAGE_KEYS } from './constants';
+import { PROFILES, DEFAULT_PROFILE } from './profiles';
 import { cacheAge, isCacheFresh, loadLocal, saveLocal, isUrgent, fmtDate } from './utils';
 
 import { Chip } from './components/Chip';
@@ -9,31 +10,71 @@ import { PipelineCard } from './components/PipelineCard';
 import { ManualEntryModal } from './components/ManualEntryModal';
 import { SourcesTab } from './components/SourcesTab';
 
+// Tag legacy (untagged) localStorage items with the default profile so
+// nothing is lost when migrating to the multi-client model.
+function migrateItems(items) {
+  return Array.isArray(items)
+    ? items.map(it => (it && it.profileId) ? it : { ...it, profileId: DEFAULT_PROFILE })
+    : items;
+}
+// lastRun was an ISO string (single client); it's now a { profileId: iso } map.
+function migrateLastRun(l) {
+  return typeof l === "string" ? { [DEFAULT_PROFILE]: l } : (l || {});
+}
+
 export default function App() {
   const [tab,           setTab]           = useState("discover");
+  const [activeProfile, setActiveProfile] = useState(DEFAULT_PROFILE);
   const [discovering,   setDiscovering]   = useState(false);
   const [results,       setResults]       = useState([]);
   const [pipeline,      setPipeline]      = useState([]);
   const [serviceFilter, setServiceFilter] = useState("All service areas");
   const [minScore,      setMinScore]      = useState(5);
   const [error,         setError]         = useState(null);
-  const [lastRun,       setLastRun]       = useState(null);
+  const [lastRun,       setLastRun]       = useState({}); // { profileId: ISO }
   const [expandedId,    setExpandedId]    = useState(null);
   const [showManual,    setShowManual]    = useState(false);
   const [searchQuery,   setSearchQuery]   = useState("");
   const discoverRef = useRef(null);
   const didMountRef = useRef(false);
 
+  const profile = PROFILES[activeProfile] || PROFILES[DEFAULT_PROFILE];
+  const lastRunAt = lastRun?.[activeProfile] || null;
+
+  // Items belonging to the active client only.
+  const profileResults  = results.filter(r => (r.profileId || DEFAULT_PROFILE) === activeProfile);
+  const profilePipeline = pipeline.filter(p => (p.profileId || DEFAULT_PROFILE) === activeProfile);
+
+  function switchProfile(id) {
+    if (id === activeProfile || !PROFILES[id]) return;
+    setActiveProfile(id);
+    saveLocal(STORAGE_KEYS.activeProfile, id);
+    setExpandedId(null);
+    // Reset the service-area filter if it doesn't exist in the new profile.
+    if (!PROFILES[id].serviceAreas.includes(serviceFilter)) {
+      setServiceFilter("All service areas");
+    }
+  }
+
   useEffect(() => {
     if (didMountRef.current) return;
     didMountRef.current = true;
 
-    const r = loadLocal(STORAGE_KEYS.results);  if (r) setResults(r);
-    const p = loadLocal(STORAGE_KEYS.pipeline); if (p) setPipeline(p);
-    const l = loadLocal(STORAGE_KEYS.lastRun);  if (l) setLastRun(l);
+    const ap = loadLocal(STORAGE_KEYS.activeProfile);
+    if (ap && PROFILES[ap]) setActiveProfile(ap);
 
+    const r = loadLocal(STORAGE_KEYS.results);
+    if (r) { const m = migrateItems(r); setResults(m); saveLocal(STORAGE_KEYS.results, m); }
+    const p = loadLocal(STORAGE_KEYS.pipeline);
+    if (p) { const m = migrateItems(p); setPipeline(m); saveLocal(STORAGE_KEYS.pipeline, m); }
+    const lRaw = loadLocal(STORAGE_KEYS.lastRun);
+    const l = migrateLastRun(lRaw);
+    if (lRaw) { setLastRun(l); saveLocal(STORAGE_KEYS.lastRun, l); }
+
+    // The scheduled prefetch only covers the default profile (CivicMakers).
+    const defaultLastRun = l[DEFAULT_PROFILE] || null;
     const hasLocalResults = r && r.length > 0;
-    const localCacheFresh = hasLocalResults && isCacheFresh(l);
+    const localCacheFresh = hasLocalResults && isCacheFresh(defaultLastRun);
 
     if (localCacheFresh) return;
 
@@ -68,8 +109,10 @@ export default function App() {
         const enriched = rfps.map((r, i) => ({
           ...r,
           id: r.id || `rfp-${Date.now()}-${i}`,
+          relevanceScore: r.relevanceScore ?? r.fitScore,
           discoveredAt: data.cachedAt,
           isManual: false,
+          profileId: DEFAULT_PROFILE, // scheduled prefetch is CivicMakers
         }));
 
         setResults(prev => {
@@ -80,9 +123,11 @@ export default function App() {
         });
 
         setLastRun(prev => {
-          if (!prev || new Date(data.cachedAt) > new Date(prev)) {
-            saveLocal(STORAGE_KEYS.lastRun, data.cachedAt);
-            return data.cachedAt;
+          const cur = prev?.[DEFAULT_PROFILE];
+          if (!cur || new Date(data.cachedAt) > new Date(cur)) {
+            const next = { ...prev, [DEFAULT_PROFILE]: data.cachedAt };
+            saveLocal(STORAGE_KEYS.lastRun, next);
+            return next;
           }
           return prev;
         });
@@ -112,7 +157,11 @@ export default function App() {
   }
 
   async function discover(forceRefresh = false) {
-    if (!forceRefresh && isCacheFresh(lastRun) && results.length > 0) {
+    const pid  = activeProfile;
+    const prof = PROFILES[pid] || PROFILES[DEFAULT_PROFILE];
+    const profResults = results.filter(r => (r.profileId || DEFAULT_PROFILE) === pid);
+
+    if (!forceRefresh && isCacheFresh(lastRun?.[pid]) && profResults.length > 0) {
       return;
     }
 
@@ -122,76 +171,20 @@ export default function App() {
 
     const now = new Date().toISOString();
 
-    const apiEndpoints = [
-      "/.netlify/functions/fetch-grants-gov",
-      "/.netlify/functions/fetch-ca-grants",
-      "/.netlify/functions/fetch-sam-gov",
-      "/.netlify/functions/fetch-usaspending",
-      "/.netlify/functions/fetch-sbir",
-      "/.netlify/functions/fetch-nsf",
-    ];
+    // Direct-API endpoints are profile-specific (CivicMakers only); other
+    // profiles rely purely on the LLM web-search gap-fill.
+    const apiEndpoints = prof.apiEndpoints || [];
 
     const apiPromises = apiEndpoints.map(url =>
       fetch(url).then(r => r.ok ? r.json() : { results: [] }).catch(() => ({ results: [] }))
     );
 
-    const focus = serviceFilter === "All service areas"
-      ? "all four service areas"
-      : `"${serviceFilter}" specifically`;
-
-    const gapFillPrompt = `Today is ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}. You are an RFP research assistant for CivicMakers, a California public sector design consultancy.
-
-CivicMakers' four service areas:
-1. Service Design & Evaluation — user research, service blueprints, program evaluation
-2. Strategic Planning — co-created plans, collective visioning, implementation toolkits
-3. Community & Stakeholder Engagement — outreach campaigns, facilitation, consensus building
-4. Training & Capacity Building — human-centered design training, applied learning programs
-
-Search focus: ${focus}
-
-IMPORTANT: Do NOT search grants.gov, SAM.gov, or grants.ca.gov — those are already covered by direct API queries.
-
-Search for current California RFPs, RFQs, IFBs, and consulting solicitations on these sources ONLY:
-- caleprocure.ca.gov (California State Contracts Register)
-- procurement.opengov.com (Bay Area counties and cities)
-- hbex.coveredca.com/solicitations (Covered California)
-- sf.gov/information/bid-opportunities (San Francisco OEWD)
-- bart.gov/about/business/procurement (BART)
-- ocwd.com/about/rfp-contracts (Orange County Water District)
-- mwdoc.com/about-mwdoc/rfps-rfqs (Municipal Water District of Orange County)
-- hacla.org/procurement (Housing Authority of City of Los Angeles)
-- csuchico.edu/pcs/current-bids.shtml (Chico State)
-- ucop.edu/for-suppliers (University of California System)
-- foundationccc.org/CollegeBuys (California Community Colleges)
-- Marin, San Mateo, Alameda, Santa Cruz, Sonoma, Solano, Orange County procurement pages
-- San Jose, Oakland, Sacramento, Foster City, Coronado, Davis, Glendale city portals
-- sgc.ca.gov (Strategic Growth Council)
-- Foundation pages: calfund.org, calendow.org, sff.org
-
-Use keywords: "community engagement consultant RFP", "strategic planning consultant RFP", "human-centered design consulting RFP", "equity assessment consultant RFP", "workforce development RFP California".
-
-Return 20-30 best matches as a JSON array. Each object must have exactly:
-{
-  "id": "unique-slug",
-  "title": "full title as listed",
-  "agency": "issuing agency",
-  "url": "direct URL or null",
-  "deadline": "deadline as listed or null",
-  "description": "2-3 sentence scope summary",
-  "relevanceScore": <integer 1-10>,
-  "relevanceReason": "1-2 sentences on why this fits CivicMakers",
-  "serviceArea": "Service Design & Evaluation | Strategic Planning | Community & Stakeholder Engagement | Training & Capacity Building",
-  "budget": "budget if stated or null",
-  "postedDate": "date posted or null",
-  "source": "portal name"
-}
-
-ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and end with ].`;
-
+    // The discovery prompt is built server-side from src/profiles.js — we only
+    // send the active profile id so the two sides never diverge.
     const gapFillPromise = fetch("/.netlify/functions/discover", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: gapFillPrompt }),
+      body: JSON.stringify({ profileId: pid }),
     });
 
     try {
@@ -204,9 +197,10 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
           id: r.id || `api-${Date.now()}-${i}`,
           discoveredAt: now,
           isManual: false,
-          relevanceScore: r.relevanceScore ?? 5,
+          profileId: pid,
+          relevanceScore: r.relevanceScore ?? r.fitScore ?? 5,
           relevanceReason: r.relevanceReason ?? "From direct API query",
-          serviceArea: r.serviceArea ?? "Community & Stakeholder Engagement",
+          serviceArea: r.serviceArea ?? prof.defaultServiceArea,
         }));
 
         setResults(prev => {
@@ -228,6 +222,8 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
               id: r.id || `api-scored-${Date.now()}-${i}`,
               discoveredAt: now,
               isManual: false,
+              profileId: pid,
+              relevanceScore: r.relevanceScore ?? r.fitScore,
             }));
             setResults(prev => {
               const withoutOld = prev.filter(p => !scored.some(s => s.id === p.id));
@@ -270,6 +266,8 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
                 id: r.id || `llm-${Date.now()}-${i}`,
                 discoveredAt: now,
                 isManual: false,
+                profileId: pid,
+                relevanceScore: r.relevanceScore ?? r.fitScore,
               }));
               setResults(prev => {
                 const merged = mergeResults(enriched, prev);
@@ -281,8 +279,11 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
         })
         .catch(err => console.warn("LLM gap-fill skipped:", err.message));
 
-      setLastRun(now);
-      saveLocal(STORAGE_KEYS.lastRun, now);
+      setLastRun(prev => {
+        const next = { ...prev, [pid]: now };
+        saveLocal(STORAGE_KEYS.lastRun, next);
+        return next;
+      });
 
     } catch (e) {
       console.error("Discovery error:", e);
@@ -298,32 +299,42 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
     saveLocal(STORAGE_KEYS.pipeline, updated);
   }
 
-  const addToPipeline   = (rfp) => { if (pipeline.some(p => p.id === rfp.id)) return; persistPipeline([...pipeline, { ...rfp, status: "New", notes: "", addedAt: new Date().toISOString() }]); };
-  const saveManual      = (rfp) => { persistPipeline([...pipeline, { ...rfp, addedAt: new Date().toISOString() }]); setShowManual(false); };
+  const addToPipeline   = (rfp) => { if (pipeline.some(p => p.id === rfp.id)) return; persistPipeline([...pipeline, { ...rfp, profileId: rfp.profileId || activeProfile, status: "New", notes: "", addedAt: new Date().toISOString() }]); };
+  const saveManual      = (rfp) => { persistPipeline([...pipeline, { ...rfp, profileId: activeProfile, addedAt: new Date().toISOString() }]); setShowManual(false); };
   const updateStatus    = (id, status) => persistPipeline(pipeline.map(p => p.id === id ? { ...p, status }  : p));
   const updateNotes     = (id, notes)  => persistPipeline(pipeline.map(p => p.id === id ? { ...p, notes }   : p));
   const removeFromPip   = (id) => persistPipeline(pipeline.filter(p => p.id !== id));
 
   function clearResults() {
-    setResults([]);
-    setLastRun(null);
-    localStorage.removeItem(STORAGE_KEYS.results);
-    localStorage.removeItem(STORAGE_KEYS.lastRun);
+    setResults(prev => {
+      const kept = prev.filter(r => (r.profileId || DEFAULT_PROFILE) !== activeProfile);
+      saveLocal(STORAGE_KEYS.results, kept);
+      return kept;
+    });
+    setLastRun(prev => {
+      const next = { ...prev };
+      delete next[activeProfile];
+      saveLocal(STORAGE_KEYS.lastRun, next);
+      return next;
+    });
   }
 
   function exportCSV() {
-    const cols = ["title","agency","status","deadline","budget","serviceArea","relevanceScore","url","notes","discoveredAt"];
+    const cols = ["client","title","agency","status","deadline","budget","serviceArea","relevanceScore","url","notes","discoveredAt"];
     const header = cols.join(",");
-    const rows = pipeline.map(r => cols.map(c => `"${(r[c] || "").toString().replace(/"/g, '""')}"`).join(","));
+    const rows = profilePipeline.map(r => cols.map(c => {
+      const v = c === "client" ? (PROFILES[r.profileId]?.label || r.profileId || "") : r[c];
+      return `"${(v ?? "").toString().replace(/"/g, '""')}"`;
+    }).join(","));
     const blob = new Blob([header + "\n" + rows.join("\n")], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = `rfp-pipeline-${new Date().toISOString().slice(0,10)}.csv`;
+    a.download = `rfp-pipeline-${activeProfile}-${new Date().toISOString().slice(0,10)}.csv`;
     a.click();
   }
 
   const query = searchQuery.toLowerCase().trim();
-  const filtered = [...results]
+  const filtered = [...profileResults]
     .filter(r => (r.relevanceScore || 0) >= minScore)
     .filter(r => serviceFilter === "All service areas" || r.serviceArea === serviceFilter)
     .filter(r => {
@@ -334,9 +345,9 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
     .sort((a, b) => (b.relevanceScore || 0) - (a.relevanceScore || 0));
 
   const activeStatuses = ["New","Reviewing","Interested","Bidding","Submitted"];
-  const activeCount  = pipeline.filter(p => activeStatuses.includes(p.status)).length;
-  const wonCount     = pipeline.filter(p => p.status === "Won").length;
-  const urgentCount  = pipeline.filter(p => isUrgent(p.deadline)).length;
+  const activeCount  = profilePipeline.filter(p => activeStatuses.includes(p.status)).length;
+  const wonCount     = profilePipeline.filter(p => p.status === "Won").length;
+  const urgentCount  = profilePipeline.filter(p => isUrgent(p.deadline)).length;
 
   return (
     <div style={{ background: "#f4f3f0", minHeight: "100vh" }}>
@@ -344,28 +355,38 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
       {/* ── Header ── */}
       <div style={{ background: "#103b51", padding: "13px 18px", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
         <div>
-          <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: "#94A3B8", marginBottom: 2 }}>CivicMakers · Internal</div>
+          <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".12em", color: "#94A3B8", marginBottom: 2 }}>{profile.org} · Internal</div>
           <div style={{ fontSize: 16, fontWeight: 700, color: "#F1F5F9", letterSpacing: "-.01em", fontFamily: "Montserrat, Helvetica, Arial, sans-serif" }}>RFP Radar</div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {urgentCount > 0 && <Chip label={`⚠ ${urgentCount} deadline soon`} bg="#FEF3C7" fg="#92400E" />}
-          {lastRun && <div style={{ fontSize: 11, color: "#94A3B8", textAlign: "right" }}>Last run<br /><span style={{ color: "#CBD5E1" }}>{fmtDate(lastRun)}</span></div>}
+          {lastRunAt && <div style={{ fontSize: 11, color: "#94A3B8", textAlign: "right" }}>Last run<br /><span style={{ color: "#CBD5E1" }}>{fmtDate(lastRunAt)}</span></div>}
         </div>
+      </div>
+
+      {/* ── Profile switcher ── */}
+      <div style={{ background: "#0c2e3f", padding: "8px 18px", display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+        <span style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".1em", color: "#64748B", marginRight: 4 }}>Client</span>
+        {Object.values(PROFILES).map(p => (
+          <button key={p.id} onClick={() => switchProfile(p.id)} style={{ fontSize: 12, fontWeight: activeProfile === p.id ? 700 : 500, padding: "5px 14px", background: activeProfile === p.id ? "#F1F5F9" : "transparent", color: activeProfile === p.id ? "#103b51" : "#94A3B8", border: `1px solid ${activeProfile === p.id ? "#F1F5F9" : "#2a4a5c"}`, borderRadius: 7, cursor: "pointer", transition: "all .15s" }}>
+            {p.label}
+          </button>
+        ))}
       </div>
 
       <div style={{ maxWidth: 760, margin: "0 auto", padding: "16px 14px 80px" }}>
 
         {/* ── Stats ── */}
         <div style={{ display: "flex", gap: 7, marginBottom: 16 }}>
-          <StatCard label="Discovered" value={results.length} />
-          <StatCard label="Pipeline"   value={pipeline.length} />
+          <StatCard label="Discovered" value={profileResults.length} />
+          <StatCard label="Pipeline"   value={profilePipeline.length} />
           <StatCard label="Active"     value={activeCount}    accent="#ef525f" />
           <StatCard label="Won"        value={wonCount}       accent="#24a791" />
         </div>
 
         {/* ── Tabs ── */}
         <div style={{ display: "flex", background: "#E2E8F0", borderRadius: 11, padding: 3, marginBottom: 16 }}>
-          {[{ id: "discover", label: "Discover" }, { id: "pipeline", label: `Pipeline${pipeline.length ? ` (${pipeline.length})` : ""}` }, { id: "sources", label: "Sources" }].map(t => (
+          {[{ id: "discover", label: "Discover" }, { id: "pipeline", label: `Pipeline${profilePipeline.length ? ` (${profilePipeline.length})` : ""}` }, { id: "sources", label: "Sources" }].map(t => (
             <button key={t.id} onClick={() => setTab(t.id)} style={{ flex: 1, padding: "7px 0", fontSize: 13, fontWeight: tab === t.id ? 700 : 400, background: tab === t.id ? "#FFF" : "transparent", color: tab === t.id ? "#103b51" : "#64748B", border: "none", borderRadius: 8, cursor: "pointer", boxShadow: tab === t.id ? "0 1px 4px rgba(0,0,0,.1)" : "none", transition: "all .15s" }}>
               {t.label}
             </button>
@@ -375,20 +396,25 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
         {/* ── DISCOVER tab ── */}
         {tab === "discover" && (
           <div>
+            {/* Active client context */}
+            <div style={{ marginBottom: 10, padding: "9px 12px", background: "#FFF", border: "1px solid #E2E8F0", borderRadius: 10 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#103b51" }}>{profile.label}</div>
+              <div style={{ fontSize: 12, color: "#64748B", marginTop: 1 }}>{profile.blurb}</div>
+            </div>
             <div style={{ display: "flex", gap: 7, marginBottom: 10, flexWrap: "wrap" }}>
               <div style={{ flex: 3, minWidth: 200, position: "relative" }}>
                 <input type="text" value={searchQuery} onChange={e => setSearchQuery(e.target.value)} placeholder="Search title, agency, description…" style={{ width: "100%", padding: "8px 30px 8px 10px", border: "1px solid #E2E8F0", borderRadius: 8, background: "#FFF", fontSize: 13, color: "#103b51" }} />
                 {searchQuery && <button onClick={() => setSearchQuery("")} style={{ position: "absolute", right: 8, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", fontSize: 14, color: "#94A3B8", lineHeight: 1 }}>×</button>}
               </div>
               <select value={serviceFilter} onChange={e => setServiceFilter(e.target.value)} style={{ flex: 2, minWidth: 180, padding: "8px 10px", border: "1px solid #E2E8F0", borderRadius: 8, background: "#FFF", fontSize: 13, color: "#103b51" }}>
-                {SERVICES.map(s => <option key={s}>{s}</option>)}
+                {profile.serviceAreas.map(s => <option key={s}>{s}</option>)}
               </select>
               <select value={minScore} onChange={e => setMinScore(Number(e.target.value))} style={{ flex: 1, minWidth: 110, padding: "8px 10px", border: "1px solid #E2E8F0", borderRadius: 8, background: "#FFF", fontSize: 13, color: "#103b51" }}>
                 {[3,4,5,6,7,8].map(n => <option key={n} value={n}>Score {n}+</option>)}
               </select>
-              {isCacheFresh(lastRun) && results.length > 0 ? (
+              {isCacheFresh(lastRunAt) && profileResults.length > 0 ? (
                 <button onClick={() => discover(true)} disabled={discovering} style={{ padding: "8px 20px", fontSize: 13, fontWeight: 700, background: discovering ? "#64748B" : "#FFF", color: discovering ? "#F8FAFC" : "#103b51", border: "1px solid #E2E8F0", borderRadius: 8, cursor: discovering ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}>
-                  {discovering ? "Searching…" : `Refresh ↻ (cached ${cacheAge(lastRun)})`}
+                  {discovering ? "Searching…" : `Refresh ↻ (cached ${cacheAge(lastRunAt)})`}
                 </button>
               ) : (
                 <button onClick={() => discover(true)} disabled={discovering} style={{ padding: "8px 20px", fontSize: 13, fontWeight: 700, background: discovering ? "#64748B" : "#103b51", color: "#F8FAFC", border: "none", borderRadius: 8, cursor: discovering ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}>
@@ -399,9 +425,9 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
 
             {discovering && (
               <div style={{ textAlign: "center", padding: "50px 0" }}>
-                <div style={{ fontSize: 14, color: "#475569", marginBottom: 5 }}>Searching California procurement portals…</div>
-                <div style={{ fontSize: 12, color: "#94A3B8" }}>Querying grants.gov, CA Grants, SAM.gov, USAspending, SBIR, NSF…</div>
-                {results.length > 0 && <div style={{ fontSize: 12, color: "#ef525f", marginTop: 6 }}>{results.length} results so far — still searching…</div>}
+                <div style={{ fontSize: 14, color: "#475569", marginBottom: 5 }}>Searching procurement portals for {profile.label}…</div>
+                <div style={{ fontSize: 12, color: "#94A3B8" }}>{profile.geography} · {profile.solicitationTypes}</div>
+                {profileResults.length > 0 && <div style={{ fontSize: 12, color: "#ef525f", marginTop: 6 }}>{profileResults.length} results so far — still searching…</div>}
               </div>
             )}
 
@@ -414,11 +440,11 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
             {!discovering && filtered.length > 0 && (
               <>
                 <div style={{ fontSize: 12, color: "#94A3B8", marginBottom: 9, display: "flex", justifyContent: "space-between" }}>
-                  <span>{filtered.length} of {results.length}{query && ` matching "${searchQuery}"`} · sorted by score{lastRun && ` · fetched ${cacheAge(lastRun)}`}{isCacheFresh(lastRun) && " ✓"}</span>
+                  <span>{filtered.length} of {profileResults.length}{query && ` matching "${searchQuery}"`} · sorted by score{lastRunAt && ` · fetched ${cacheAge(lastRunAt)}`}{isCacheFresh(lastRunAt) && " ✓"}</span>
                   <button onClick={clearResults} style={{ fontSize: 11, color: "#94A3B8", background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Clear</button>
                 </div>
                 {filtered.map(rfp => (
-                  <DiscoverCard key={rfp.id} rfp={rfp} expanded={expandedId === rfp.id} onToggle={() => setExpandedId(expandedId === rfp.id ? null : rfp.id)} inPipeline={pipeline.some(p => p.id === rfp.id)} onAdd={() => addToPipeline(rfp)} />
+                  <DiscoverCard key={rfp.id} rfp={rfp} clientLabel={profile.label} expanded={expandedId === rfp.id} onToggle={() => setExpandedId(expandedId === rfp.id ? null : rfp.id)} inPipeline={pipeline.some(p => p.id === rfp.id)} onAdd={() => addToPipeline(rfp)} />
                 ))}
               </>
             )}
@@ -427,7 +453,7 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
               <div style={{ textAlign: "center", padding: "50px 0" }}>
                 <div style={{ fontSize: 32, marginBottom: 10 }}>🔍</div>
                 <div style={{ fontSize: 14, color: "#475569", marginBottom: 5 }}>No results yet</div>
-                <div style={{ fontSize: 12, color: "#94A3B8" }}>Click "Run Discovery" to search live California RFP sources</div>
+                <div style={{ fontSize: 12, color: "#94A3B8" }}>Click "Run Discovery" to search live {profile.label} RFP sources</div>
               </div>
             )}
           </div>
@@ -438,19 +464,19 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
               <button onClick={() => setShowManual(true)} style={{ fontSize: 13, fontWeight: 600, padding: "7px 16px", background: "#FFF", color: "#103b51", border: "1px solid #E2E8F0", borderRadius: 8, cursor: "pointer" }}>+ Add manually</button>
-              {pipeline.length > 0 && <button onClick={exportCSV} style={{ fontSize: 12, color: "#64748B", background: "none", border: "1px solid #E2E8F0", borderRadius: 8, padding: "6px 12px", cursor: "pointer" }}>Export CSV ↓</button>}
+              {profilePipeline.length > 0 && <button onClick={exportCSV} style={{ fontSize: 12, color: "#64748B", background: "none", border: "1px solid #E2E8F0", borderRadius: 8, padding: "6px 12px", cursor: "pointer" }}>Export CSV ↓</button>}
             </div>
 
-            {pipeline.length === 0 ? (
+            {profilePipeline.length === 0 ? (
               <div style={{ textAlign: "center", padding: "50px 0" }}>
                 <div style={{ fontSize: 32, marginBottom: 10 }}>📋</div>
                 <div style={{ fontSize: 14, color: "#475569", marginBottom: 5 }}>Pipeline is empty</div>
                 <div style={{ fontSize: 12, color: "#94A3B8" }}>Discover opportunities and add them, or click "+ Add manually"</div>
               </div>
             ) : (
-              STATUSES.filter(st => pipeline.some(p => p.status === st)).map(st => {
+              STATUSES.filter(st => profilePipeline.some(p => p.status === st)).map(st => {
                 const c = STATUS_STYLE[st];
-                const group = pipeline.filter(p => p.status === st);
+                const group = profilePipeline.filter(p => p.status === st);
                 return (
                   <div key={st} style={{ marginBottom: 22 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 7 }}>
@@ -468,10 +494,10 @@ ONLY the raw JSON array. No markdown fences, no explanation. Start with [ and en
         )}
 
         {/* ── SOURCES tab ── */}
-        {tab === "sources" && <SourcesTab results={results} />}
+        {tab === "sources" && <SourcesTab results={profileResults} />}
       </div>
 
-      {showManual && <ManualEntryModal onSave={saveManual} onClose={() => setShowManual(false)} />}
+      {showManual && <ManualEntryModal onSave={saveManual} onClose={() => setShowManual(false)} serviceAreas={profile.serviceAreas} />}
     </div>
   );
 }

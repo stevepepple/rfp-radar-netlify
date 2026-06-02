@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { SERVICES } from '../constants';
 
-export function ManualEntryModal({ onSave, onClose }) {
-  const [form, setForm] = useState({ title: "", agency: "", url: "", deadline: "", budget: "", serviceArea: SERVICES[1], description: "", notes: "" });
+export function ManualEntryModal({ onSave, onClose, serviceAreas = SERVICES }) {
+  // serviceAreas[0] is the "All …" sentinel; real options start at index 1.
+  const areaOptions = serviceAreas.slice(1);
+  const [form, setForm] = useState({ title: "", agency: "", url: "", deadline: "", budget: "", serviceArea: areaOptions[0], description: "", notes: "" });
   const [err, setErr] = useState("");
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }));
   const inp = { width: "100%", fontSize: 13, padding: "8px 10px", border: "1px solid #E2E8F0", borderRadius: 8, background: "#FFF", color: "#103b51" };
@@ -44,7 +46,7 @@ export function ManualEntryModal({ onSave, onClose }) {
         <div style={{ marginBottom: 12 }}>
           <label style={lbl}>Service Area</label>
           <select value={form.serviceArea} onChange={e => set("serviceArea", e.target.value)} style={inp}>
-            {SERVICES.slice(1).map(s => <option key={s}>{s}</option>)}
+            {areaOptions.map(s => <option key={s}>{s}</option>)}
           </select>
         </div>
         <div style={{ marginBottom: 12 }}>

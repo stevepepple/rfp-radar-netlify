@@ -3,7 +3,7 @@ import { Chip } from './Chip';
 import { Score } from './Score';
 import { scoreStyle, isUrgent, isPast } from '../utils';
 
-export function DiscoverCard({ rfp, expanded, onToggle, inPipeline, onAdd }) {
+export function DiscoverCard({ rfp, expanded, onToggle, inPipeline, onAdd, clientLabel = "CivicMakers" }) {
   const sc = scoreStyle(rfp.relevanceScore || 5);
   const urgent = isUrgent(rfp.deadline);
   const past   = isPast(rfp.deadline);
@@ -31,7 +31,7 @@ export function DiscoverCard({ rfp, expanded, onToggle, inPipeline, onAdd }) {
           <p style={{ fontSize: 13, color: "#475569", lineHeight: 1.7, margin: "0 0 11px" }}>{rfp.description}</p>
           {rfp.relevanceReason && (
             <div style={{ background: sc.bg, border: `1px solid ${sc.border}`, borderRadius: 8, padding: "9px 12px", marginBottom: 11 }}>
-              <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: sc.fg, marginBottom: 3 }}>Why it matches CivicMakers</div>
+              <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: ".07em", color: sc.fg, marginBottom: 3 }}>Why it matches {clientLabel}</div>
               <div style={{ fontSize: 13, color: "#103b51", lineHeight: 1.55 }}>{rfp.relevanceReason}</div>
             </div>
           )}
