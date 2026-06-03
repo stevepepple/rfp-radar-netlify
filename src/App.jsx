@@ -176,7 +176,7 @@ export default function App() {
     const apiEndpoints = prof.apiEndpoints || [];
 
     const apiPromises = apiEndpoints.map(url =>
-      fetch(url).then(r => r.ok ? r.json() : { results: [] }).catch(() => ({ results: [] }))
+      fetch(`${url}?profile=${pid}`).then(r => r.ok ? r.json() : { results: [] }).catch(() => ({ results: [] }))
     );
 
     // The discovery prompt is built server-side from src/profiles.js — we only

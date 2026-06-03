@@ -83,6 +83,25 @@ export const PROFILES = {
       "equity assessment consultant RFP",
       "workforce development RFP California",
     ],
+    // Drives the direct-API fetchers (fetch-grants-gov, fetch-sam-gov).
+    // These values reproduce the original CivicMakers behavior exactly.
+    apiQuery: {
+      grantsKeywords: [
+        "community engagement", "strategic planning", "human-centered design",
+        "stakeholder engagement", "capacity building", "service design",
+        "equity assessment", "program evaluation", "facilitation",
+        "public participation",
+      ],
+      grantsKeywordLimit: 6,
+      grantsGeo: ["california", "nationwide", "national"], // [] = no geo filter
+      samState: "CA",   // null = national
+      samNaics: [],     // [] = keyword-only search (no NAICS narrowing)
+      samKeywords: [
+        "engagement", "planning", "facilitation", "design", "evaluation",
+        "equity", "outreach", "training", "capacity", "stakeholder",
+        "consulting", "community", "assessment", "strategy",
+      ],
+    },
   },
 
   // ──────────────────────────────────────────────────────────────────────
@@ -115,8 +134,15 @@ export const PROFILES = {
       "Digital Experience & Content — websites, interactive maps, mobile apps, content and storytelling",
       "Events & Cultural Programming — event marketing, cultural programming, experience design",
     ],
-    apiEndpoints: [], // LLM web-search only
-    excludeSources: [],
+    // Federal APIs relevant to tourism / DMO work: grants.gov (NEA Our Town,
+    // EDA, DOT placemaking) and SAM.gov (NPS / Forest Service / EDA / FHWA
+    // visitor-experience & marketing contracts). Other tourism RFPs live on
+    // portals without public APIs, so they come from the LLM web-search.
+    apiEndpoints: [
+      "/.netlify/functions/fetch-grants-gov",
+      "/.netlify/functions/fetch-sam-gov",
+    ],
+    excludeSources: ["grants.gov", "SAM.gov"],
     sources: [
       "State tourism / travel office RFP pages (e.g. Visit California, Travel Oregon, Texas Tourism)",
       "Destination marketing organization (DMO) and convention & visitors bureau (CVB) procurement pages",
@@ -137,6 +163,25 @@ export const PROFILES = {
       "tourism data analytics RFP",
       "CVB marketing services RFP",
     ],
+    apiQuery: {
+      grantsKeywords: [
+        "tourism", "destination marketing", "creative placemaking", "placemaking",
+        "visitor experience", "wayfinding", "cultural district", "downtown revitalization",
+        "scenic byway", "trail",
+      ],
+      grantsKeywordLimit: 6,
+      grantsGeo: [], // national — no geographic narrowing
+      samState: null, // national
+      // NAICS narrows the national SAM feed server-side so tourism/marketing
+      // solicitations actually surface within the row limit (and the 10/day
+      // SAM rate limit). Advertising, marketing consulting, custom programming.
+      samNaics: ["541810", "541613", "541511"],
+      samKeywords: [
+        "tourism", "destination", "marketing", "wayfinding", "visitor",
+        "interpretive", "placemaking", "travel", "brand", "advertising",
+        "website", "app", "experience", "signage", "campaign",
+      ],
+    },
   },
 };
 
