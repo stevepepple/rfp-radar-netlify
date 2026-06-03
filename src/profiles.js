@@ -134,15 +134,15 @@ export const PROFILES = {
       "Digital Experience & Content — websites, interactive maps, mobile apps, content and storytelling",
       "Events & Cultural Programming — event marketing, cultural programming, experience design",
     ],
-    // Federal APIs relevant to tourism / DMO work: grants.gov (NEA Our Town,
-    // EDA, DOT placemaking) and SAM.gov (NPS / Forest Service / EDA / FHWA
-    // visitor-experience & marketing contracts). Other tourism RFPs live on
-    // portals without public APIs, so they come from the LLM web-search.
-    apiEndpoints: [
-      "/.netlify/functions/fetch-grants-gov",
-      "/.netlify/functions/fetch-sam-gov",
-    ],
-    excludeSources: ["grants.gov", "SAM.gov"],
+    // LLM web-search only. Federal procurement APIs (grants.gov / SAM.gov)
+    // were tried but are a structural mismatch for destination marketing:
+    // grants.gov "tourism" hits are State Dept cultural exchanges + DOT
+    // infrastructure, and SAM advertising NAICS is dominated by military
+    // recruiting. Vibemap's real buyers — DMOs, CVBs, city tourism offices —
+    // post to destination portals with no public API, which the web-search
+    // targets directly (and self-scores via the Vibemap discovery prompt).
+    apiEndpoints: [],
+    excludeSources: [],
     sources: [
       "State tourism / travel office RFP pages (e.g. Visit California, Travel Oregon, Texas Tourism)",
       "Destination marketing organization (DMO) and convention & visitors bureau (CVB) procurement pages",
@@ -163,25 +163,7 @@ export const PROFILES = {
       "tourism data analytics RFP",
       "CVB marketing services RFP",
     ],
-    apiQuery: {
-      grantsKeywords: [
-        "tourism", "destination marketing", "creative placemaking", "placemaking",
-        "visitor experience", "wayfinding", "cultural district", "downtown revitalization",
-        "scenic byway", "trail",
-      ],
-      grantsKeywordLimit: 6,
-      grantsGeo: [], // national — no geographic narrowing
-      samState: null, // national
-      // NAICS narrows the national SAM feed server-side so tourism/marketing
-      // solicitations actually surface within the row limit (and the 10/day
-      // SAM rate limit). Advertising, marketing consulting, custom programming.
-      samNaics: ["541810", "541613", "541511"],
-      samKeywords: [
-        "tourism", "destination", "marketing", "wayfinding", "visitor",
-        "interpretive", "placemaking", "travel", "brand", "advertising",
-        "website", "app", "experience", "signage", "campaign",
-      ],
-    },
+    // No apiQuery — Vibemap uses LLM web-search only (see apiEndpoints note).
   },
 };
 
